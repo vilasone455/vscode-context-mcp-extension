@@ -1,0 +1,104 @@
+{
+  "name": "project-session-manager",
+  "displayName": "Project Session Manager",
+  "description": "Store and manage project sessions with context files",
+  "version": "0.1.0",
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": [
+    "onCommand:projectSession.addFileToContext",
+    "onCommand:projectSession.addSelectionToContext",
+    "onView:projectSessionExplorer"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "projectSession.addFileToContext",
+        "title": "Add File to Context"
+      },
+      {
+        "command": "projectSession.addSelectionToContext",
+        "title": "Add Selection to Context"
+      },
+      {
+        "command": "projectSession.clearContext",
+        "title": "Clear Context"
+      },
+      {
+        "command": "projectSession.removeContextFile",
+        "title": "Remove from Context"
+      },
+      {
+        "command": "projectSessionExplorer.refresh",
+        "title": "Refresh",
+        "icon": "$(refresh)"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "projectSession.addFileToContext",
+        "key": "ctrl+l",
+        "mac": "cmd+l"
+      },
+      {
+        "command": "projectSession.addSelectionToContext",
+        "key": "ctrl+i",
+        "mac": "cmd+i"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "project-session-explorer",
+          "title": "Project Session",
+          "icon": "resources/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "project-session-explorer": [
+        {
+          "id": "projectSessionExplorer",
+          "name": "Context Files"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "projectSessionExplorer",
+        "contents": "No context files yet. Use Ctrl+L to add the current file or Ctrl+I to add selected code.\n[Clear Context](command:projectSession.clearContext)"
+      }
+    ],
+    "menus": {
+      "view/item/context": [
+        {
+          "command": "projectSession.removeContextFile",
+          "when": "view == projectSessionExplorer && viewItem == contextFile",
+          "group": "inline"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "projectSessionExplorer.refresh",
+          "when": "view == projectSessionExplorer",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "pretest": "npm run lint",
+    "test": "node ./test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.60.0",
+    "eslint": "^8.0.0",
+    "glob": "^7.2.0",
+    "mocha": "^9.1.3",
+    "vscode-test": "^1.6.1"
+  }
+}

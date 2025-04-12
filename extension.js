@@ -357,10 +357,16 @@ class ProjectSessionWebviewProvider {
                 display: flex;
                 flex-direction: column;
                 align-items: center;
-                justify-content: center;
-                height: 100%;
                 text-align: center;
-                padding: 0 12px;
+                padding: 20px 12px;
+                background-color: var(--vscode-editor-background);
+                border-radius: 4px;
+                margin: 10px;
+            }
+            
+            .context-files-container {
+                flex: 1;
+                overflow: auto;
             }
             
             .toolbar {

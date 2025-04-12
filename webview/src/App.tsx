@@ -83,11 +83,6 @@ const App: React.FC = () => {
         file.content.toLowerCase().includes(search.toLowerCase())
       );
 
-  if (contextFiles.length === 0) {
-    console.log('Rendering empty state');
-    return <EmptyState />;
-  }
-
   console.log(`Rendering ${contextFiles.length} context files`);
 
   return (
@@ -101,15 +96,19 @@ const App: React.FC = () => {
         <FileSearchInput onFileSelect={handleAddFile} />
       </div>
 
-      <div>
-        {filteredFiles.map((file) => (
-          <ContextFileItem
-            key={file.id}
-            file={file}
-            onClick={() => handleFileClick(file)}
-            onRemove={() => handleRemoveFile(file.id)}
-          />
-        ))}
+      <div className="context-files-container">
+        {contextFiles.length === 0 ? (
+          <EmptyState />
+        ) : (
+          filteredFiles.map((file) => (
+            <ContextFileItem
+              key={file.id}
+              file={file}
+              onClick={() => handleFileClick(file)}
+              onRemove={() => handleRemoveFile(file.id)}
+            />
+          ))
+        )}
       </div>
     </div>
   );

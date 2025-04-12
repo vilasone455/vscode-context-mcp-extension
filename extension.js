@@ -36,50 +36,85 @@ class ProjectSessionWebviewProvider {
 
   // This is called when the view is first created
   resolveWebviewView(webviewView, context, _token) {
+    console.log('Webview view resolved');
     this._view = webviewView;
 
-    // Set up the webview options
-    webviewView.webview.options = {
-      enableScripts: true,
-      localResourceRoots: [this.extensionUri]
-    };
+    try {
+      // Set up the webview options
+      webviewView.webview.options = {
+        enableScripts: true,
+        localResourceRoots: [this.extensionUri]
+      };
 
-    // Set initial HTML content
-    webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
+      // Set initial HTML content
+      webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
 
-    // Handle messages from the webview
-    webviewView.webview.onDidReceiveMessage(message => {
-      switch (message.type) {
-        case 'getContextFiles':
-          this._sendContextFilesToWebview();
-          break;
-        case 'clearContext':
-          this._clearContext();
-          break;
-        case 'removeContextFile':
-          this._removeContextFile(message.payload);
-          break;
-        case 'openFile':
-          this._openFile(message.payload);
-          break;
-      }
-    });
+      // Handle messages from the webview
+      webviewView.webview.onDidReceiveMessage(message => {
+        try {
+          console.log('Received message from webview:', message.type);
+          switch (message.type) {
+            case 'getContextFiles':
+              this._sendContextFilesToWebview();
+              break;
+            case 'clearContext':
+              this._clearContext();
+              break;
+            case 'removeContextFile':
+              this._removeContextFile(message.payload);
+              break;
+            case 'openFile':
+              this._openFile(message.payload);
+              break;
+            case 'searchWorkspaceFiles':
+              this._searchWorkspaceFiles(message.payload);
+              break;
+            case 'addFileToContext':
+              this._addFileToContext(message.payload);
+              break;
+            default:
+              console.log('Unknown message type:', message.type);
+          }
+        } catch (error) {
+          console.error('Error handling message:', error);
+          vscode.window.showErrorMessage(`Error in Project Session Manager: ${error.message}`);
+        }
+      });
 
-    // Send initial context files
-    this._sendContextFilesToWebview();
+      // Send initial context files with slight delay to ensure webview is ready
+      setTimeout(() => {
+        this._sendContextFilesToWebview();
+      }, 500);
+    } catch (error) {
+      console.error('Error initializing webview:', error);
+      vscode.window.showErrorMessage(`Failed to initialize Project Session Manager: ${error.message}`);
+    }
   }
 
   // Update the webview with the current context files
   _sendContextFilesToWebview() {
-    if (this._view) {
-      const filesWithIds = session.context_file_lists.map((file, index) => {
-        return { ...file, id: index };
-      });
-      
-      this._view.webview.postMessage({
-        type: 'updateContextFiles',
-        payload: filesWithIds
-      });
+    try {
+      if (this._view && this._view.webview) {
+        const filesWithIds = session.context_file_lists.map((file, index) => {
+          return { ...file, id: index };
+        });
+        
+        console.log(`Sending ${filesWithIds.length} files to webview`);
+        
+        this._view.webview.postMessage({
+          type: 'updateContextFiles',
+          payload: filesWithIds
+        }).then(() => {
+          console.log('Context files message sent successfully');
+        }).catch(err => {
+          console.error('Failed to send context files to webview:', err);
+        });
+      } else {
+        console.log('Cannot update webview: view is undefined or webview is not ready');
+      }
+    } catch (error) {
+      console.error('Error sending context files to webview:', error);
+      vscode.window.showErrorMessage(`Error updating Project Session Manager: ${error.message}`);
     }
   }
 
@@ -96,6 +131,91 @@ class ProjectSessionWebviewProvider {
       const removed = session.context_file_lists.splice(index, 1)[0];
       vscode.window.showInformationMessage(`Removed ${removed.file_name} from context`);
       this._sendContextFilesToWebview();
+    }
+  }
+
+  // Search workspace files by name/path
+  async _searchWorkspaceFiles(query) {
+    if (!query || query.trim() === '') {
+      this._view.webview.postMessage({
+        type: 'fileSearchResults',
+        payload: []
+      });
+      return;
+    }
+
+    try {
+      // Get all files in workspace folders
+      const workspaceFolders = vscode.workspace.workspaceFolders;
+      if (!workspaceFolders) {
+        return;
+      }
+
+      // Use VS Code's built-in file search
+      const results = await vscode.workspace.findFiles('**/*');
+      
+      // Filter and limit results
+      const filteredResults = results
+        .filter(uri => {
+          const fileName = path.basename(uri.fsPath);
+          const filePath = uri.fsPath;
+          return fileName.toLowerCase().includes(query.toLowerCase()) || 
+                 filePath.toLowerCase().includes(query.toLowerCase());
+        })
+        .slice(0, 10) // Limit to 10 results
+        .map(uri => ({
+          fileName: path.basename(uri.fsPath),
+          fullPath: uri.fsPath
+        }));
+
+      // Send results back to webview
+      this._view.webview.postMessage({
+        type: 'fileSearchResults',
+        payload: filteredResults
+      });
+    } catch (error) {
+      console.error('Error searching files:', error);
+    }
+  }
+
+  // Add a file to context from path
+  async _addFileToContext(payload) {
+    try {
+      const filePath = payload.fullPath;
+      const fileName = path.basename(filePath);
+      
+      // Check if already in context
+      const alreadyExists = session.context_file_lists.some(file => 
+        file.fullPath === filePath && file.fullCode
+      );
+      
+      if (alreadyExists) {
+        vscode.window.showInformationMessage(`${fileName} is already in the context`);
+        return;
+      }
+      
+      // Read the file content
+      const document = await vscode.workspace.openTextDocument(filePath);
+      const content = document.getText();
+      
+      // Add to context
+      const contextFile = new ContextFile(
+        fileName,
+        filePath,
+        content,
+        0,
+        document.lineCount - 1,
+        true
+      );
+      
+      session.context_file_lists.push(contextFile);
+      vscode.window.showInformationMessage(`Added ${fileName} to context`);
+      
+      // Update the webview
+      this._sendContextFilesToWebview();
+    } catch (error) {
+      console.error('Error adding file to context:', error);
+      vscode.window.showErrorMessage(`Error adding file to context: ${error.message}`);
     }
   }
 
@@ -229,6 +349,54 @@ class ProjectSessionWebviewProvider {
             .search-container {
                 padding: 4px 8px;
                 border-bottom: 1px solid var(--vscode-panel-border);
+                position: relative;
+            }
+            
+            .file-search-container {
+                position: relative;
+                width: 100%;
+            }
+            
+            .file-search-dropdown {
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                z-index: 1000;
+                background-color: var(--vscode-dropdown-background);
+                border: 1px solid var(--vscode-dropdown-border);
+                max-height: 200px;
+                overflow-y: auto;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            }
+            
+            .file-search-item {
+                padding: 6px 8px;
+                cursor: pointer;
+                border-bottom: 1px solid var(--vscode-panel-border);
+            }
+            
+            .file-search-item:hover {
+                background-color: var(--vscode-list-hoverBackground);
+            }
+            
+            .file-name {
+                font-weight: bold;
+                margin-bottom: 2px;
+            }
+            
+            .file-path {
+                font-size: 90%;
+                color: var(--vscode-descriptionForeground);
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            
+            .search-loading {
+                padding: 8px;
+                text-align: center;
+                color: var(--vscode-descriptionForeground);
             }
         </style>
     </head>
@@ -309,6 +477,8 @@ async function addFileToContext(context) {
   const fullPath = document.fileName;
   const content = document.getText();
 
+  console.log(`Adding file to context: ${fileName}`);
+
   // Check if this file is already in the context
   if (isFileInContext(fullPath, 0, document.lineCount - 1, true)) {
     vscode.window.showWarningMessage(`${fileName} is already in the context`);
@@ -326,6 +496,8 @@ async function addFileToContext(context) {
 
   session.context_file_lists.push(contextFile);
   vscode.window.showInformationMessage(`Added ${fileName} to context`);
+  
+  console.log(`Current context files: ${session.context_file_lists.length}`);
   
   // Notify the webview to update
   updateWebView(context);
@@ -396,9 +568,13 @@ function clearContext(context) {
 
 // Helper function to update the WebView
 function updateWebView(context) {
-  const webViewProvider = vscode.window.registeredWebviewViewProviders?.get('projectSessionExplorer');
-  if (webViewProvider) {
-    webViewProvider._sendContextFilesToWebview();
+  console.log('Updating webview...');
+  const provider = vscode.window.registeredWebviewViewProviders?.get('projectSessionExplorer');
+  if (provider) {
+    console.log('Provider found, sending update');
+    provider._sendContextFilesToWebview();
+  } else {
+    console.log('No provider found! Cannot update webview.');
   }
 }
 

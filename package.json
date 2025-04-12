@@ -8,10 +8,7 @@
   },
   "categories": ["Other"],
   "activationEvents": [
-    "onCommand:projectSession.addFileToContext",
-    "onCommand:projectSession.addSelectionToContext",
-    "onCommand:projectSession.showWebview",
-    "onView:projectSessionExplorer"
+    "*"
   ],
   "main": "./extension.js",
   "contributes": {

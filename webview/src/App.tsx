@@ -1,18 +1,27 @@
 import React, { useEffect, useState } from 'react';
-import { ContextFile, Message } from './types';
+import { ContextFile, Message, FileSearchResult } from './types';
 import ContextFileItem from './ContextFileItem';
 import EmptyState from './EmptyState';
+import FileSearchInput from './FileSearchInput';
+import { getVSCodeAPI } from './vscode-api';
 
-// Access VS Code API
-const vscode = acquireVsCodeApi();
+// Get VS Code API singleton for use throughout the component
+const vscodeApi = getVSCodeAPI();
 
-const App: React.FC = (): React.ReactElement => {
+const App: React.FC = () => {
   const [contextFiles, setContextFiles] = useState<ContextFile[]>([]);
   const [search, setSearch] = useState('');
+  const [showAllFiles, setShowAllFiles] = useState(true);
 
+  // Set up message handling and request initial data
   useEffect(() => {
+    console.log('App component mounted');
+    
     const handleMessage = (event: MessageEvent<any>) => {
       const message = event.data as Message;
+      console.log('React received message:', message.type, message.payload ? 
+        `(${Array.isArray(message.payload) ? message.payload.length : 'object'})` : 
+        '');
 
       switch (message.type) {
         case 'updateContextFiles':
@@ -24,19 +33,21 @@ const App: React.FC = (): React.ReactElement => {
     window.addEventListener('message', handleMessage);
     
     // Request initial data
-    vscode.postMessage({ type: 'getContextFiles' });
+    vscodeApi.postMessage({ type: 'getContextFiles' });
+    console.log('Requested initial context files');
 
     return () => {
       window.removeEventListener('message', handleMessage);
     };
   }, []);
 
+  // UI event handlers
   const handleClearContext = () => {
-    vscode.postMessage({ type: 'clearContext' });
+    vscodeApi.postMessage({ type: 'clearContext' });
   };
 
   const handleFileClick = (file: ContextFile) => {
-    vscode.postMessage({
+    vscodeApi.postMessage({
       type: 'openFile',
       payload: {
         path: file.fullPath,
@@ -47,24 +58,37 @@ const App: React.FC = (): React.ReactElement => {
   };
 
   const handleRemoveFile = (id: number) => {
-    vscode.postMessage({
+    vscodeApi.postMessage({
       type: 'removeContextFile',
       payload: id
     });
   };
 
   const handleRefresh = () => {
-    vscode.postMessage({ type: 'getContextFiles' });
+    vscodeApi.postMessage({ type: 'getContextFiles' });
   };
 
-  const filteredFiles = contextFiles.filter(file => 
-    file.file_name.toLowerCase().includes(search.toLowerCase()) || 
-    file.content.toLowerCase().includes(search.toLowerCase())
-  );
+  const handleAddFile = (file: FileSearchResult) => {
+    vscodeApi.postMessage({
+      type: 'addFileToContext',
+      payload: file
+    });
+  };
+
+  // Filter files if search is active
+  const filteredFiles = showAllFiles 
+    ? contextFiles 
+    : contextFiles.filter(file => 
+        file.file_name.toLowerCase().includes(search.toLowerCase()) || 
+        file.content.toLowerCase().includes(search.toLowerCase())
+      );
 
   if (contextFiles.length === 0) {
+    console.log('Rendering empty state');
     return <EmptyState />;
   }
+
+  console.log(`Rendering ${contextFiles.length} context files`);
 
   return (
     <div>
@@ -74,12 +98,7 @@ const App: React.FC = (): React.ReactElement => {
       </div>
       
       <div className="search-container">
-        <input
-          type="text"
-          placeholder="Search context files..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+        <FileSearchInput onFileSelect={handleAddFile} />
       </div>
 
       <div>

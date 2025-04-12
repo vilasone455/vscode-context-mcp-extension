@@ -24,8 +24,9 @@ class ContextFile {
   }
 }
 
-// Global session instance
+// Global instances
 let session = new ProjectSession();
+let webviewProvider = null; // Store a reference to the webview provider
 
 // WebView Provider class for the sidebar
 class ProjectSessionWebviewProvider {
@@ -420,6 +421,11 @@ class ProjectSessionWebviewProvider {
                 background-color: var(--vscode-list-hoverBackground);
             }
             
+            .file-search-item.selected {
+                background-color: var(--vscode-list-activeSelectionBackground);
+                color: var(--vscode-list-activeSelectionForeground);
+            }
+            
             .file-name {
                 font-weight: bold;
                 margin-bottom: 2px;
@@ -458,9 +464,9 @@ function activate(context) {
   let clearContextCmd = vscode.commands.registerCommand('projectSession.clearContext', () => clearContext(context));
   
   // Register the WebviewView provider for the sidebar
-  const provider = new ProjectSessionWebviewProvider(context.extensionUri);
+  webviewProvider = new ProjectSessionWebviewProvider(context.extensionUri);
   context.subscriptions.push(
-    vscode.window.registerWebviewViewProvider('projectSessionExplorer', provider)
+    vscode.window.registerWebviewViewProvider('projectSessionExplorer', webviewProvider)
   );
   
   // Add command to remove a specific context file
@@ -609,10 +615,9 @@ function clearContext(context) {
 // Helper function to update the WebView
 function updateWebView(context) {
   console.log('Updating webview...');
-  const provider = vscode.window.registeredWebviewViewProviders?.get('projectSessionExplorer');
-  if (provider) {
+  if (webviewProvider) {
     console.log('Provider found, sending update');
-    provider._sendContextFilesToWebview();
+    webviewProvider._sendContextFilesToWebview();
   } else {
     console.log('No provider found! Cannot update webview.');
   }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, KeyboardEvent } from 'react';
 import { FileSearchResult } from './types';
 import { getVSCodeAPI } from './vscode-api';
 
@@ -14,6 +14,7 @@ const FileSearchInput: React.FC<FileSearchInputProps> = ({ onFileSelect }) => {
   const [searchResults, setSearchResults] = useState<FileSearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isDropdownVisible, setIsDropdownVisible] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(-1); // Track selected index
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -70,7 +71,56 @@ const FileSearchInput: React.FC<FileSearchInputProps> = ({ onFileSelect }) => {
     setQuery('');
     setSearchResults([]);
     setIsDropdownVisible(false);
+    setSelectedIndex(-1);
   };
+
+  // Handle keyboard navigation
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (!isDropdownVisible || searchResults.length === 0) return;
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault(); // Prevent scrolling
+        setSelectedIndex(prevIndex => {
+          const newIndex = prevIndex < searchResults.length - 1 ? prevIndex + 1 : 0;
+          // Scroll the item into view if needed
+          const selectedElement = document.getElementById(`search-item-${newIndex}`);
+          if (selectedElement && dropdownRef.current) {
+            selectedElement.scrollIntoView({ block: 'nearest' });
+          }
+          return newIndex;
+        });
+        break;
+      case 'ArrowUp':
+        e.preventDefault(); // Prevent scrolling
+        setSelectedIndex(prevIndex => {
+          const newIndex = prevIndex > 0 ? prevIndex - 1 : searchResults.length - 1;
+          // Scroll the item into view if needed
+          const selectedElement = document.getElementById(`search-item-${newIndex}`);
+          if (selectedElement && dropdownRef.current) {
+            selectedElement.scrollIntoView({ block: 'nearest' });
+          }
+          return newIndex;
+        });
+        break;
+      case 'Enter':
+        if (selectedIndex >= 0 && selectedIndex < searchResults.length) {
+          e.preventDefault();
+          handleFileClick(searchResults[selectedIndex]);
+        }
+        break;
+      case 'Escape':
+        e.preventDefault();
+        setIsDropdownVisible(false);
+        setSelectedIndex(-1);
+        break;
+    }
+  };
+
+  // Reset the selected index when the search results change
+  useEffect(() => {
+    setSelectedIndex(-1);
+  }, [searchResults]);
 
   return (
     <div className="file-search-container">
@@ -81,6 +131,7 @@ const FileSearchInput: React.FC<FileSearchInputProps> = ({ onFileSelect }) => {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onFocus={() => query && searchResults.length > 0 && setIsDropdownVisible(true)}
+        onKeyDown={handleKeyDown}
       />
       
       {isDropdownVisible && (
@@ -90,9 +141,11 @@ const FileSearchInput: React.FC<FileSearchInputProps> = ({ onFileSelect }) => {
           ) : (
             searchResults.map((file, index) => (
               <div 
-                key={index} 
-                className="file-search-item"
+                key={index}
+                id={`search-item-${index}`}
+                className={`file-search-item ${selectedIndex === index ? 'selected' : ''}`}
                 onClick={() => handleFileClick(file)}
+                onMouseEnter={() => setSelectedIndex(index)}
               >
                 <div className="file-name">{file.fileName}</div>
                 <div className="file-path">{file.fullPath}</div>

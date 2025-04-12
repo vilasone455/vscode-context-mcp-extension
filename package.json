@@ -12,6 +12,16 @@
   ],
   "main": "./extension.js",
   "contributes": {
+    "configuration": {
+      "title": "Project Session Manager",
+      "properties": {
+        "projectSession.search.excludePatterns": {
+          "type": "array",
+          "default": ["node_modules/**", "**/node_modules/**", ".git/**", "**/dist/**"],
+          "description": "File patterns to exclude from search results (in addition to .gitignore)"
+        }
+      }
+    },
     "commands": [
       {
         "command": "projectSession.showWebview",
@@ -121,6 +131,7 @@
     "webpack-cli": "^5.1.4"
   },
   "dependencies": {
+    "minimatch": "^3.1.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   }

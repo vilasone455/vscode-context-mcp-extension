@@ -1,6 +1,7 @@
 const vscode = require('vscode');
 const path = require('path');
 const fs = require('fs');
+const { getGitignoreFilter } = require('./gitignore-filter');
 
 // Data model for the session
 class ProjectSession {
@@ -151,6 +152,9 @@ class ProjectSessionWebviewProvider {
         return;
       }
 
+      // Get or initialize the gitignore filter
+      const gitignoreFilter = await getGitignoreFilter(workspaceFolders);
+
       // Use VS Code's built-in file search
       const results = await vscode.workspace.findFiles('**/*');
       
@@ -159,14 +163,30 @@ class ProjectSessionWebviewProvider {
         .filter(uri => {
           const fileName = path.basename(uri.fsPath);
           const filePath = uri.fsPath;
-          return fileName.toLowerCase().includes(query.toLowerCase()) || 
-                 filePath.toLowerCase().includes(query.toLowerCase());
+
+          // First check if file matches search query
+          const matchesQuery = fileName.toLowerCase().includes(query.toLowerCase()) || 
+                          filePath.toLowerCase().includes(query.toLowerCase());
+          
+          if (!matchesQuery) {
+            return false;
+          }
+
+          // Then check if file should be excluded based on gitignore
+          const shouldExclude = gitignoreFilter.shouldExclude(filePath);
+
+          // Also do a simple check for common ignored directories
+          const isInCommonIgnoredDir = gitignoreFilter.containsGitIgnoredSegment(filePath);
+
+          return !shouldExclude && !isInCommonIgnoredDir;
         })
         .slice(0, 10) // Limit to 10 results
         .map(uri => ({
           fileName: path.basename(uri.fsPath),
           fullPath: uri.fsPath
         }));
+
+      console.log(`Search results for "${query}": ${filteredResults.length} files (after gitignore filtering)`);
 
       // Send results back to webview
       this._view.webview.postMessage({
@@ -175,6 +195,11 @@ class ProjectSessionWebviewProvider {
       });
     } catch (error) {
       console.error('Error searching files:', error);
+      // Send empty results in case of error
+      this._view.webview.postMessage({
+        type: 'fileSearchResults',
+        payload: []
+      });
     }
   }
 

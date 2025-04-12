@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Session Manager</title>
+    <style>
+        body {
+            padding: 0;
+            margin: 0;
+            color: var(--vscode-foreground);
+            font-family: var(--vscode-font-family);
+            background-color: var(--vscode-editor-background);
+            font-size: var(--vscode-font-size);
+        }
+        
+        button {
+            background-color: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
+            border: none;
+            padding: 6px 12px;
+            cursor: pointer;
+            border-radius: 2px;
+            font-family: var(--vscode-font-family);
+        }
+        
+        button:hover {
+            background-color: var(--vscode-button-hoverBackground);
+        }
+        
+        input {
+            background-color: var(--vscode-input-background);
+            color: var(--vscode-input-foreground);
+            border: 1px solid var(--vscode-input-border);
+            padding: 4px 8px;
+            font-family: var(--vscode-font-family);
+        }
+        
+        .context-file {
+            padding: 8px 16px;
+            border-bottom: 1px solid var(--vscode-panel-border);
+            cursor: pointer;
+        }
+        
+        .context-file:hover {
+            background-color: var(--vscode-list-hoverBackground);
+        }
+        
+        .context-file-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .context-file-content {
+            max-height: 200px;
+            overflow: auto;
+            margin-top: 8px;
+            font-family: var(--vscode-editor-font-family);
+            font-size: var(--vscode-editor-font-size);
+            background-color: var(--vscode-editor-background);
+            padding: 8px;
+            border-radius: 4px;
+            white-space: pre;
+        }
+        
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            text-align: center;
+            padding: 0 20px;
+        }
+        
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 16px;
+            background-color: var(--vscode-sideBar-background);
+            border-bottom: 1px solid var(--vscode-panel-border);
+            position: sticky;
+            top: 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script src="./dist/bundle.js"></script>
+</body>
+</html>

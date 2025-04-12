@@ -1,4 +1,6 @@
 const vscode = require('vscode');
+const path = require('path');
+const fs = require('fs');
 
 // Data model for the session
 class ProjectSession {
@@ -24,30 +26,238 @@ class ContextFile {
 // Global session instance
 let session = new ProjectSession();
 
+// WebView Provider class for the sidebar
+class ProjectSessionWebviewProvider {
+  constructor(extensionUri) {
+    this.extensionUri = extensionUri;
+    this._view = undefined;
+    this._onDidChangeTreeData = new vscode.EventEmitter();
+  }
+
+  // This is called when the view is first created
+  resolveWebviewView(webviewView, context, _token) {
+    this._view = webviewView;
+
+    // Set up the webview options
+    webviewView.webview.options = {
+      enableScripts: true,
+      localResourceRoots: [this.extensionUri]
+    };
+
+    // Set initial HTML content
+    webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
+
+    // Handle messages from the webview
+    webviewView.webview.onDidReceiveMessage(message => {
+      switch (message.type) {
+        case 'getContextFiles':
+          this._sendContextFilesToWebview();
+          break;
+        case 'clearContext':
+          this._clearContext();
+          break;
+        case 'removeContextFile':
+          this._removeContextFile(message.payload);
+          break;
+        case 'openFile':
+          this._openFile(message.payload);
+          break;
+      }
+    });
+
+    // Send initial context files
+    this._sendContextFilesToWebview();
+  }
+
+  // Update the webview with the current context files
+  _sendContextFilesToWebview() {
+    if (this._view) {
+      const filesWithIds = session.context_file_lists.map((file, index) => {
+        return { ...file, id: index };
+      });
+      
+      this._view.webview.postMessage({
+        type: 'updateContextFiles',
+        payload: filesWithIds
+      });
+    }
+  }
+
+  // Clear all context files
+  _clearContext() {
+    session.context_file_lists = [];
+    vscode.window.showInformationMessage('Context cleared');
+    this._sendContextFilesToWebview();
+  }
+
+  // Remove a specific context file
+  _removeContextFile(index) {
+    if (index >= 0 && index < session.context_file_lists.length) {
+      const removed = session.context_file_lists.splice(index, 1)[0];
+      vscode.window.showInformationMessage(`Removed ${removed.file_name} from context`);
+      this._sendContextFilesToWebview();
+    }
+  }
+
+  // Open a file at specific lines
+  _openFile(payload) {
+    const filePath = payload.path;
+    const startLine = payload.startLine;
+    const endLine = payload.endLine;
+    
+    vscode.workspace.openTextDocument(filePath).then(document => {
+      vscode.window.showTextDocument(document).then(editor => {
+        const range = new vscode.Range(
+          new vscode.Position(startLine, 0),
+          new vscode.Position(endLine, 0)
+        );
+        editor.selection = new vscode.Selection(range.start, range.end);
+        editor.revealRange(range);
+      });
+    });
+  }
+
+  // Create HTML content for the webview
+  _getHtmlForWebview(webview) {
+    const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'webview', 'dist', 'bundle.js'));
+    
+    return `<!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Project Session Manager</title>
+        <style>
+            body {
+                padding: 0;
+                margin: 0;
+                color: var(--vscode-foreground);
+                font-family: var(--vscode-font-family);
+                background-color: var(--vscode-editor-background);
+                font-size: var(--vscode-font-size);
+            }
+            
+            button {
+                background-color: var(--vscode-button-background);
+                color: var(--vscode-button-foreground);
+                border: none;
+                padding: 4px 8px;
+                cursor: pointer;
+                border-radius: 2px;
+                font-family: var(--vscode-font-family);
+                font-size: var(--vscode-font-size);
+            }
+            
+            button:hover {
+                background-color: var(--vscode-button-hoverBackground);
+            }
+            
+            input {
+                background-color: var(--vscode-input-background);
+                color: var(--vscode-input-foreground);
+                border: 1px solid var(--vscode-input-border);
+                padding: 4px 8px;
+                font-family: var(--vscode-font-family);
+                font-size: var(--vscode-font-size);
+                width: 100%;
+                box-sizing: border-box;
+            }
+            
+            .context-file {
+                padding: 8px;
+                border-bottom: 1px solid var(--vscode-panel-border);
+                cursor: pointer;
+            }
+            
+            .context-file:hover {
+                background-color: var(--vscode-list-hoverBackground);
+            }
+            
+            .context-file-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                font-size: var(--vscode-font-size);
+            }
+            
+            .context-file-content {
+                max-height: 150px;
+                overflow: auto;
+                margin-top: 8px;
+                font-family: var(--vscode-editor-font-family);
+                font-size: var(--vscode-editor-font-size);
+                background-color: var(--vscode-editor-background);
+                padding: 4px;
+                border-radius: 2px;
+                white-space: pre;
+            }
+            
+            .empty-state {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                height: 100%;
+                text-align: center;
+                padding: 0 12px;
+            }
+            
+            .toolbar {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 4px 8px;
+                background-color: var(--vscode-sideBar-background);
+                border-bottom: 1px solid var(--vscode-panel-border);
+                position: sticky;
+                top: 0;
+            }
+            
+            .file-title {
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                flex: 1;
+                margin-right: 4px;
+            }
+            
+            .file-actions {
+                display: flex;
+                gap: 4px;
+            }
+            
+            .search-container {
+                padding: 4px 8px;
+                border-bottom: 1px solid var(--vscode-panel-border);
+            }
+        </style>
+    </head>
+    <body>
+        <div id="root"></div>
+        <script src="${scriptUri}"></script>
+    </body>
+    </html>`;
+  }
+}
+
 // Extension activation
 function activate(context) {
   console.log('Project Session Manager is now active');
 
   // Register commands for keyboard shortcuts
-  let addFileToContextCmd = vscode.commands.registerCommand('projectSession.addFileToContext', addFileToContext);
-  let addSelectionToContextCmd = vscode.commands.registerCommand('projectSession.addSelectionToContext', addSelectionToContext);
-  let clearContextCmd = vscode.commands.registerCommand('projectSession.clearContext', clearContext);
+  let addFileToContextCmd = vscode.commands.registerCommand('projectSession.addFileToContext', () => addFileToContext(context));
+  let addSelectionToContextCmd = vscode.commands.registerCommand('projectSession.addSelectionToContext', () => addSelectionToContext(context));
+  let clearContextCmd = vscode.commands.registerCommand('projectSession.clearContext', () => clearContext(context));
   
-  // Register the TreeDataProvider for the sidebar
-  const projectSessionProvider = new ProjectSessionProvider();
-  vscode.window.registerTreeDataProvider('projectSessionExplorer', projectSessionProvider);
+  // Register the WebviewView provider for the sidebar
+  const provider = new ProjectSessionWebviewProvider(context.extensionUri);
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider('projectSessionExplorer', provider)
+  );
   
-  // Add welcome message that shows up when there are no context files
-
-  // Refresh command
-  context.subscriptions.push(vscode.commands.registerCommand('projectSessionExplorer.refresh', () => {
-    projectSessionProvider.refresh();
-  }));
-
   // Add command to remove a specific context file
   context.subscriptions.push(vscode.commands.registerCommand('projectSession.removeContextFile', (id) => {
-    removeContextFile(parseInt(id));
-    projectSessionProvider.refresh();
+    removeContextFile(parseInt(id), context);
   }));
 
   // Update tabs when they change
@@ -87,7 +297,7 @@ function isFileInContext(fullPath, startLine, endLine, isFullCode) {
 }
 
 // Add current file to context
-async function addFileToContext() {
+async function addFileToContext(context) {
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
     vscode.window.showInformationMessage('No file is currently open');
@@ -117,12 +327,12 @@ async function addFileToContext() {
   session.context_file_lists.push(contextFile);
   vscode.window.showInformationMessage(`Added ${fileName} to context`);
   
-  // Refresh the sidebar
-  vscode.commands.executeCommand('projectSessionExplorer.refresh');
+  // Notify the webview to update
+  updateWebView(context);
 }
 
 // Add selected text to context
-async function addSelectionToContext() {
+async function addSelectionToContext(context) {
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
     vscode.window.showInformationMessage('No file is currently open');
@@ -160,25 +370,36 @@ async function addSelectionToContext() {
   session.context_file_lists.push(contextFile);
   vscode.window.showInformationMessage(`Added selection from ${fileName} to context`);
   
-  // Refresh the sidebar
-  vscode.commands.executeCommand('projectSessionExplorer.refresh');
+  // Notify the webview to update
+  updateWebView(context);
 }
 
 // Remove a specific context file by index
-function removeContextFile(index) {
+function removeContextFile(index, context) {
   if (index >= 0 && index < session.context_file_lists.length) {
     const removed = session.context_file_lists.splice(index, 1)[0];
     vscode.window.showInformationMessage(`Removed ${removed.file_name} from context`);
+    
+    // Notify the webview to update
+    updateWebView(context);
   }
 }
 
 // Clear all context files
-function clearContext() {
+function clearContext(context) {
   session.context_file_lists = [];
   vscode.window.showInformationMessage('Context cleared');
   
-  // Refresh the sidebar
-  vscode.commands.executeCommand('projectSessionExplorer.refresh');
+  // Notify the webview to update
+  updateWebView(context);
+}
+
+// Helper function to update the WebView
+function updateWebView(context) {
+  const webViewProvider = vscode.window.registeredWebviewViewProviders?.get('projectSessionExplorer');
+  if (webViewProvider) {
+    webViewProvider._sendContextFilesToWebview();
+  }
 }
 
 // Update the list of open tabs
@@ -194,70 +415,6 @@ function updateCurrentTab(editor) {
     session.curTab = editor.document.fileName.split(/[/\\]/).pop();
   } else {
     session.curTab = null;
-  }
-}
-
-// TreeDataProvider for the sidebar view
-class ProjectSessionProvider {
-  constructor() {
-    this._onDidChangeTreeData = new vscode.EventEmitter();
-    this.onDidChangeTreeData = this._onDidChangeTreeData.event;
-  }
-
-  refresh() {
-    this._onDidChangeTreeData.fire();
-  }
-
-  getTreeItem(element) {
-    return element;
-  }
-
-  getChildren(element) {
-    if (!element) {
-      // First add a "Clear All" button if there are context files
-      const items = [];
-      
-      if (session.context_file_lists.length > 0) {
-        const clearAllItem = new vscode.TreeItem("Clear All Context Files", vscode.TreeItemCollapsibleState.None);
-        clearAllItem.command = {
-          command: 'projectSession.clearContext',
-          title: 'Clear All Context Files'
-        };
-        clearAllItem.iconPath = new vscode.ThemeIcon("clear-all");
-        clearAllItem.contextValue = 'clearAll';
-        items.push(clearAllItem);
-      }
-      
-      // Then add all the context files
-      const contextFileItems = session.context_file_lists.map((contextFile, index) => {
-        const label = `${contextFile.file_name} ${contextFile.fullCode ? '(Full)' : `(Lines ${contextFile.start_line + 1}-${contextFile.end_line + 1})`}`;
-        const treeItem = new vscode.TreeItem(label);
-        
-        treeItem.command = {
-          command: 'vscode.open',
-          arguments: [vscode.Uri.file(contextFile.fullPath), {
-            selection: new vscode.Range(
-              new vscode.Position(contextFile.start_line, 0),
-              new vscode.Position(contextFile.end_line, 0)
-            )
-          }],
-          title: 'Open File'
-        };
-        
-        treeItem.contextValue = 'contextFile';
-        treeItem.id = index.toString();
-        treeItem.tooltip = contextFile.content.slice(0, 200) + (contextFile.content.length > 200 ? '...' : '');
-        
-        // Add a delete button/icon
-        treeItem.iconPath = new vscode.ThemeIcon("close");
-        
-        return treeItem;
-      });
-      
-      return [...items, ...contextFileItems];
-    }
-    
-    return [];
   }
 }
 

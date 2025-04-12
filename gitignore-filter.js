@@ -60,12 +60,13 @@ class GitignoreFilter {
       
       if (gitignoreExists) {
         const content = await fs.promises.readFile(gitignorePath, 'utf8');
-        const lines = content.split(/\\r?\\n/);
+        const lines = content.split(/\r?\n/);
         
         for (let line of lines) {
           // Skip comments and empty lines
           line = line.trim();
           if (line && !line.startsWith('#')) {
+            console.log(`Adding gitignore pattern: '${line}' from ${folderPath}`);
             // Store pattern with the folder path for context
             this.patterns.push({
               basePath: folderPath,
@@ -104,9 +105,24 @@ class GitignoreFilter {
     }
     
     // Get relative path to the workspace folder
-    const relativePath = path.relative(workspaceFolder, filePath);
+    const relativePath = path.relative(workspaceFolder, filePath).replace(/\\/g, '/');
     
-    // Check each pattern
+    // Direct check for simple directory patterns from gitignore
+    for (const { pattern } of this.patterns) {
+      // Check for simple directory patterns like "resources/"
+      if (pattern.endsWith('/')) {
+        const dirPath = pattern.slice(0, -1);
+        // Check if the relative path starts with this directory or contains it with slashes
+        if (relativePath === dirPath || 
+            relativePath.startsWith(`${dirPath}/`) || 
+            relativePath.includes(`/${dirPath}/`)) {
+          console.log(`File ${relativePath} excluded by directory pattern: ${pattern}`);
+          return true;
+        }
+      }
+    }
+    
+    // Check each pattern for more complex matching
     for (const { basePath, pattern } of this.patterns) {
       // For global patterns (from settings) or patterns from the file's workspace
       if (basePath === '' || filePath.startsWith(basePath)) {
@@ -138,17 +154,18 @@ class GitignoreFilter {
           patternToCheck = patternToCheck.slice(1);
         }
         
-        // For global patterns, we use the full pattern
-        // For workspace-specific patterns, use minimatch with the relative path
-        const pathToMatch = basePath === '' ? relativePath : relativePath;
-        
-        // Use minimatch to check pattern
-        const matches = minimatch(pathToMatch, patternToCheck, { dot: true });
-        
-        if (matches && !isNegated) {
-          return true; // File matches exclusion pattern
-        } else if (matches && isNegated) {
-          return false; // File matches negation pattern, explicitly included
+        try {
+          // Use minimatch to check pattern
+          const matches = minimatch(relativePath, patternToCheck, { dot: true });
+          
+          if (matches && !isNegated) {
+            console.log(`File ${relativePath} excluded by pattern: ${patternToCheck}`);
+            return true; // File matches exclusion pattern
+          } else if (matches && isNegated) {
+            return false; // File matches negation pattern, explicitly included
+          }
+        } catch (error) {
+          console.error(`Error matching pattern ${patternToCheck}:`, error);
         }
       }
     }
@@ -180,7 +197,7 @@ class GitignoreFilter {
     // Extract directory names from patterns and add common ones
     const ignoredDirs = new Set(['node_modules', '.git', 'dist', 'build', '.next', '.cache']);
     
-    // Add any simple directory patterns from config
+    // Add any simple directory patterns from config or gitignore
     for (const pattern of configuredPatterns) {
       // Extract directory name from patterns like '**/dir/**' or 'dir/**'
       const match = pattern.match(/(?:\*\*\/)?([\w.-]+)(?:\/\*\*)?/);
@@ -189,15 +206,40 @@ class GitignoreFilter {
       }
     }
     
+    // Add patterns from gitignore
+    for (const { pattern } of this.patterns) {
+      // Get directory name from 'dir/' pattern
+      if (pattern.endsWith('/')) {
+        const dirName = pattern.slice(0, -1);
+        ignoredDirs.add(dirName);
+      }
+    }
+    
     // Convert path separators to forward slashes for consistency
     const normalizedPath = filePath.replace(/\\/g, '/');
     
     // Check if path contains any ignored directories
-    return Array.from(ignoredDirs).some(dir => {
+    for (const dir of ignoredDirs) {
       // Match /dir/ pattern to avoid partial matches
       const dirPattern = new RegExp(`\\/${dir}\\/`, 'i');
-      return dirPattern.test(normalizedPath);
-    });
+      if (dirPattern.test(normalizedPath)) {
+        // Also check if it's in a resources/ directory
+        if (normalizedPath.includes('/resources/')) {
+          console.log(`File ${normalizedPath} is in resources/ directory, should be excluded`);
+          return true;
+        }
+        console.log(`File ${normalizedPath} contains ignored segment: ${dir}`);
+        return true;
+      }
+    }
+    
+    // Special check for resources/ directory
+    if (normalizedPath.includes('/resources/')) {
+      console.log(`File ${normalizedPath} is in resources/ directory (special check), should be excluded`);
+      return true;
+    }
+    
+    return false;
   }
 }
 

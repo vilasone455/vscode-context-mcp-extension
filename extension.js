@@ -157,6 +157,7 @@ class ProjectSessionWebviewProvider {
 
       // Use VS Code's built-in file search
       const results = await vscode.workspace.findFiles('**/*');
+      console.log(`Found ${results.length} files before filtering`);
       
       // Filter and limit results
       const filteredResults = results
@@ -172,13 +173,27 @@ class ProjectSessionWebviewProvider {
             return false;
           }
 
+          // Check for resources/ directory explicitly
+          if (filePath.includes('resources')) {
+            console.log(`Found file in resources directory: ${filePath}`);
+            return false;
+          }
+
           // Then check if file should be excluded based on gitignore
           const shouldExclude = gitignoreFilter.shouldExclude(filePath);
+          if (shouldExclude) {
+            console.log(`Excluding file based on gitignore: ${filePath}`);
+            return false;
+          }
 
           // Also do a simple check for common ignored directories
           const isInCommonIgnoredDir = gitignoreFilter.containsGitIgnoredSegment(filePath);
+          if (isInCommonIgnoredDir) {
+            console.log(`Excluding file based on common ignored directory: ${filePath}`);
+            return false;
+          }
 
-          return !shouldExclude && !isInCommonIgnoredDir;
+          return true;
         })
         .slice(0, 10) // Limit to 10 results
         .map(uri => ({

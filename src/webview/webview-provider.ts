@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { ProjectSession, ContextFile, ContextFileWithId } from '../models/project-session';
 import { getGitignoreFilter } from '../utils/gitignore-filter';
+import { getTerminalContent, clearContext, removeContextFile, addFileToContextByPath } from '../commands';
 
 // Interface for search results
 interface FileSearchResult {
@@ -116,42 +117,18 @@ export class ProjectSessionWebviewProvider implements vscode.WebviewViewProvider
 
   // Clear all context files
   private _clearContext() {
-    this._session.context_file_lists = [];
-    vscode.window.showInformationMessage('Context clearedss');
-    this.sendContextFilesToWebview();
+    clearContext(this._session, this);
   }
 
   // Remove a specific context file
   private _removeContextFile(index: number) {
-    if (index >= 0 && index < this._session.context_file_lists.length) {
-      const removed = this._session.context_file_lists.splice(index, 1)[0];
-      vscode.window.showInformationMessage(`Removed ${removed.file_name} from context`);
-      this.sendContextFilesToWebview();
-    }
+    removeContextFile(this._session, index, this);
   }
 
 
 
   private async _getTerminalContent() {
-    try {
-      // Select & copy terminal content
-      await vscode.commands.executeCommand('workbench.action.terminal.selectAll');
-      await vscode.commands.executeCommand('workbench.action.terminal.copySelection');
-      await vscode.commands.executeCommand('workbench.action.terminal.clearSelection');
-  
-      // Read from clipboard
-      const terminalContent = await vscode.env.clipboard.readText();
-      
-      // Use the content (e.g., log it, return it, or process it)
-      console.log('Terminal content:', terminalContent);
-
-      vscode.window.showInformationMessage(terminalContent);
-      
-    } catch (error) {
-      console.error('Failed to get terminal content:', error);
-      vscode.window.showErrorMessage('Failed to copy terminal content');
-    }
-
+    await getTerminalContent();
   }
 
   // Search workspace files by name/path
@@ -245,43 +222,7 @@ export class ProjectSessionWebviewProvider implements vscode.WebviewViewProvider
 
   // Add a file to context from path
   private async _addFileToContext(payload: FileSearchResult) {
-    try {
-      const filePath = payload.fullPath;
-      const fileName = path.basename(filePath);
-      
-      // Check if already in context
-      const alreadyExists = this._session.context_file_lists.some(file => 
-        file.fullPath === filePath && file.fullCode
-      );
-      
-      if (alreadyExists) {
-        vscode.window.showInformationMessage(`${fileName} is already in the context`);
-        return;
-      }
-      
-      // Read the file content
-      const document = await vscode.workspace.openTextDocument(filePath);
-      const content = document.getText();
-      
-      // Add to context
-      const contextFile = new ContextFile(
-        fileName,
-        filePath,
-        content,
-        0,
-        document.lineCount - 1,
-        true
-      );
-      
-      this._session.context_file_lists.push(contextFile);
-      vscode.window.showInformationMessage(`Added ${fileName} to context`);
-      
-      // Update the webview
-      this.sendContextFilesToWebview();
-    } catch (error) {
-      console.error('Error adding file to context:', error);
-      vscode.window.showErrorMessage(`Error adding file to context: ${error instanceof Error ? error.message : String(error)}`);
-    }
+    await addFileToContextByPath(this._session, payload, this);
   }
 
   // Open a file at specific lines

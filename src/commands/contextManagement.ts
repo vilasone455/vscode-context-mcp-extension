@@ -1,6 +1,13 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
 import { ProjectSession, ContextFile } from '../models/project-session';
 import { ProjectSessionWebviewProvider } from '../webview/webview-provider';
+
+// Interface for file search result
+interface FileSearchResult {
+  fileName: string;
+  fullPath: string;
+}
 
 // Check if a file already exists in the context
 export function isFileInContext(session: ProjectSession, fullPath: string, startLine: number, endLine: number, isFullCode: boolean): boolean {
@@ -133,5 +140,46 @@ export function updateWebView(webviewProvider: ProjectSessionWebviewProvider | n
     webviewProvider.sendContextFilesToWebview();
   } else {
     console.log('No provider found! Cannot update webview.');
+  }
+}
+
+// Add a file to context by path (used by the webview provider)
+export async function addFileToContextByPath(session: ProjectSession, payload: FileSearchResult, webviewProvider: ProjectSessionWebviewProvider | null) {
+  try {
+    const filePath = payload.fullPath;
+    const fileName = path.basename(filePath);
+    
+    // Check if already in context
+    const alreadyExists = session.context_file_lists.some(file => 
+      file.fullPath === filePath && file.fullCode
+    );
+    
+    if (alreadyExists) {
+      vscode.window.showInformationMessage(`${fileName} is already in the context`);
+      return;
+    }
+    
+    // Read the file content
+    const document = await vscode.workspace.openTextDocument(filePath);
+    const content = document.getText();
+    
+    // Add to context
+    const contextFile = new ContextFile(
+      fileName,
+      filePath,
+      content,
+      0,
+      document.lineCount - 1,
+      true
+    );
+    
+    session.context_file_lists.push(contextFile);
+    vscode.window.showInformationMessage(`Added ${fileName} to context`);
+    
+    // Update the webview
+    updateWebView(webviewProvider);
+  } catch (error) {
+    console.error('Error adding file to context:', error);
+    vscode.window.showErrorMessage(`Error adding file to context: ${error instanceof Error ? error.message : String(error)}`);
   }
 }

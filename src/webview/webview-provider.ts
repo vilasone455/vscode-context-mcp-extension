@@ -65,6 +65,9 @@ export class ProjectSessionWebviewProvider implements vscode.WebviewViewProvider
             case 'addFileToContext':
               this._addFileToContext(message.payload);
               break;
+            case 'getTerminalContent':
+              this._getTerminalContent();
+              break;
             default:
               console.log('Unknown message type:', message.type);
           }
@@ -114,7 +117,7 @@ export class ProjectSessionWebviewProvider implements vscode.WebviewViewProvider
   // Clear all context files
   private _clearContext() {
     this._session.context_file_lists = [];
-    vscode.window.showInformationMessage('Context cleared');
+    vscode.window.showInformationMessage('Context clearedss');
     this.sendContextFilesToWebview();
   }
 
@@ -125,6 +128,30 @@ export class ProjectSessionWebviewProvider implements vscode.WebviewViewProvider
       vscode.window.showInformationMessage(`Removed ${removed.file_name} from context`);
       this.sendContextFilesToWebview();
     }
+  }
+
+
+
+  private async _getTerminalContent() {
+    try {
+      // Select & copy terminal content
+      await vscode.commands.executeCommand('workbench.action.terminal.selectAll');
+      await vscode.commands.executeCommand('workbench.action.terminal.copySelection');
+      await vscode.commands.executeCommand('workbench.action.terminal.clearSelection');
+  
+      // Read from clipboard
+      const terminalContent = await vscode.env.clipboard.readText();
+      
+      // Use the content (e.g., log it, return it, or process it)
+      console.log('Terminal content:', terminalContent);
+
+      vscode.window.showInformationMessage(terminalContent);
+      
+    } catch (error) {
+      console.error('Failed to get terminal content:', error);
+      vscode.window.showErrorMessage('Failed to copy terminal content');
+    }
+
   }
 
   // Search workspace files by name/path

@@ -9,6 +9,7 @@
   "categories": ["Other"],
   "activationEvents": [
     "onView:projectSessionExplorer",
+    "onCommand:projectSession.getTerminalContent",
     "onCommand:projectSession.addFileToContext",
     "onCommand:projectSession.addSelectionToContext",
     "onCommand:projectSession.showWebview",
@@ -31,6 +32,10 @@
       {
         "command": "projectSession.showWebview",
         "title": "Show Project Session Manager"
+      },
+      {
+        "command": "projectSession.getTerminalContent",
+        "title": "Get Terminal Content"
       },
       {
         "command": "projectSession.addFileToContext",

@@ -75,6 +75,10 @@ const App: React.FC = () => {
     });
   };
 
+  const handleGetTerminal = async () => {
+    vscodeApi.postMessage({ type: 'getTerminalContent' });
+  }
+
   // Filter files if search is active
   const filteredFiles = showAllFiles 
     ? contextFiles 
@@ -89,7 +93,7 @@ const App: React.FC = () => {
     <div>
       <div className="toolbar">
         <button onClick={handleClearContext}>Clear All</button>
-        <button onClick={handleRefresh}>Refresh</button>
+        <button onClick={handleGetTerminal}>Refresh</button>
       </div>
       
       <div className="search-container">

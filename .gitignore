@@ -3,3 +3,4 @@ resources/
 dist/
 webview/dist/
 *.vsix
+*.cmd

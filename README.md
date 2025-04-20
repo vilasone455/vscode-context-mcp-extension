@@ -21,7 +21,7 @@ The extension provides a REST API server running on port 4569, allowing external
 
 ## Installation
 
-1. Download the `.vsix` file from the [releases page](https://github.com/vilasone455/vscode-project-context-mcp/releases)
+1. Download the `.vsix` file from the [releases page](https://github.com/vilasone455/vscode-project-context-mcp-extension/releases)
 2. In VS Code, go to the Extensions view (Ctrl+Shift+X)
 3. Click on the "..." in the top right of the Extensions view
 4. Select "Install from VSIX..." and choose the downloaded file

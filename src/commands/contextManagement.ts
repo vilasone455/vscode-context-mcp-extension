@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { ProjectSession, ContextFile } from '../models/project-session';
-import { ProjectSessionWebviewProvider } from '../webview/webview-provider';
+import { ContextManager, ContextFile } from '../models/project-session';
+import { ContextMCPWebviewProvider } from '../webview/webview-provider';
 
 // Interface for file search result
 interface FileSearchResult {
@@ -10,7 +10,7 @@ interface FileSearchResult {
 }
 
 // Check if a file already exists in the context
-export function isFileInContext(session: ProjectSession, fullPath: string, startLine: number, endLine: number, isFullCode: boolean): boolean {
+export function isFileInContext(session: ContextManager, fullPath: string, startLine: number, endLine: number, isFullCode: boolean): boolean {
   return session.context_file_lists.some(contextFile => {
     // For full code files, just check the path
     if (isFullCode && contextFile.fullCode) {
@@ -31,7 +31,7 @@ export function isFileInContext(session: ProjectSession, fullPath: string, start
 }
 
 // Add current file to context
-export async function addFileToContext(session: ProjectSession, _: vscode.ExtensionContext, webviewProvider: ProjectSessionWebviewProvider | null) {
+export async function addFileToContext(session: ContextManager, _: vscode.ExtensionContext, webviewProvider: ContextMCPWebviewProvider | null) {
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
     vscode.window.showInformationMessage('No file is currently open');
@@ -70,7 +70,7 @@ export async function addFileToContext(session: ProjectSession, _: vscode.Extens
 }
 
 // Add selected text to context
-export async function addSelectionToContext(session: ProjectSession, _: vscode.ExtensionContext, webviewProvider: ProjectSessionWebviewProvider | null) {
+export async function addSelectionToContext(session: ContextManager, _: vscode.ExtensionContext, webviewProvider: ContextMCPWebviewProvider | null) {
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
     vscode.window.showInformationMessage('No file is currently open');
@@ -113,7 +113,7 @@ export async function addSelectionToContext(session: ProjectSession, _: vscode.E
 }
 
 // Remove a specific context file by index
-export function removeContextFile(session: ProjectSession, index: number, webviewProvider: ProjectSessionWebviewProvider | null) {
+export function removeContextFile(session: ContextManager, index: number, webviewProvider: ContextMCPWebviewProvider | null) {
   if (index >= 0 && index < session.context_file_lists.length) {
     const removed = session.context_file_lists.splice(index, 1)[0];
     vscode.window.showInformationMessage(`Removed ${removed.file_name} from context`);
@@ -124,7 +124,7 @@ export function removeContextFile(session: ProjectSession, index: number, webvie
 }
 
 // Clear all context files
-export function clearContext(session: ProjectSession, webviewProvider: ProjectSessionWebviewProvider | null) {
+export function clearContext(session: ContextManager, webviewProvider: ContextMCPWebviewProvider | null) {
   session.context_file_lists = [];
   vscode.window.showInformationMessage('Context cleared');
   
@@ -133,7 +133,7 @@ export function clearContext(session: ProjectSession, webviewProvider: ProjectSe
 }
 
 // Helper function to update the WebView
-export function updateWebView(webviewProvider: ProjectSessionWebviewProvider | null) {
+export function updateWebView(webviewProvider: ContextMCPWebviewProvider | null) {
   console.log('Updating webview...');
   if (webviewProvider) {
     console.log('Provider found, sending update');
@@ -144,7 +144,7 @@ export function updateWebView(webviewProvider: ProjectSessionWebviewProvider | n
 }
 
 // Add a file to context by path (used by the webview provider)
-export async function addFileToContextByPath(session: ProjectSession, payload: FileSearchResult, webviewProvider: ProjectSessionWebviewProvider | null) {
+export async function addFileToContextByPath(session: ContextManager, payload: FileSearchResult, webviewProvider: ContextMCPWebviewProvider | null) {
   try {
     const filePath = payload.fullPath;
     const fileName = path.basename(filePath);

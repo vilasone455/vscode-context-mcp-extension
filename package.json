@@ -1,6 +1,6 @@
 {
-  "name": "project-session-manager",
-  "displayName": "Project Session Manager",
+  "name": "vscode-context-mcp-extension",
+  "displayName": "VS Code Context MCP Extension",
   "description": "Store and manage project sessions with context files",
   "version": "1.0.0",
   "engines": {
@@ -10,20 +10,20 @@
     "Other"
   ],
   "activationEvents": [
-    "onView:projectSessionExplorer",
-    "onCommand:projectSession.getTerminalContent",
-    "onCommand:projectSession.addFileToContext",
-    "onCommand:projectSession.addSelectionToContext",
-    "onCommand:projectSession.showWebview",
-    "onCommand:projectSession.clearContext",
-    "onCommand:projectSession.removeContextFile"
+    "onView:contextMCPExplorer",
+    "onCommand:contextMCP.getTerminalContent",
+    "onCommand:contextMCP.addFileToContext",
+    "onCommand:contextMCP.addSelectionToContext",
+    "onCommand:contextMCP.showWebview",
+    "onCommand:contextMCP.clearContext",
+    "onCommand:contextMCP.removeContextFile"
   ],
   "main": "./dist/extension.js",
   "contributes": {
     "configuration": {
-      "title": "Project Session Manager",
+      "title": "VS Code Context MCP Extension",
       "properties": {
-        "projectSession.search.excludePatterns": {
+        "contextMCP.search.excludePatterns": {
           "type": "array",
           "default": [
             "node_modules/**",
@@ -37,43 +37,43 @@
     },
     "commands": [
       {
-        "command": "projectSession.showWebview",
-        "title": "Show Project Session Manager"
+        "command": "contextMCP.showWebview",
+        "title": "Show VS Code Context MCP Extension"
       },
       {
-        "command": "projectSession.getTerminalContent",
+        "command": "contextMCP.getTerminalContent",
         "title": "Get Terminal Content"
       },
       {
-        "command": "projectSession.addFileToContext",
+        "command": "contextMCP.addFileToContext",
         "title": "Add File to Context"
       },
       {
-        "command": "projectSession.addSelectionToContext",
+        "command": "contextMCP.addSelectionToContext",
         "title": "Add Selection to Context"
       },
       {
-        "command": "projectSession.clearContext",
+        "command": "contextMCP.clearContext",
         "title": "Clear Context"
       },
       {
-        "command": "projectSession.removeContextFile",
+        "command": "contextMCP.removeContextFile",
         "title": "Remove from Context"
       },
       {
-        "command": "projectSessionExplorer.refresh",
+        "command": "contextMCPExplorer.refresh",
         "title": "Refresh",
         "icon": "$(refresh)"
       }
     ],
     "keybindings": [
       {
-        "command": "projectSession.addFileToContext",
+        "command": "contextMCP.addFileToContext",
         "key": "ctrl+l",
         "mac": "cmd+l"
       },
       {
-        "command": "projectSession.addSelectionToContext",
+        "command": "contextMCP.addSelectionToContext",
         "key": "ctrl+i",
         "mac": "cmd+i"
       }
@@ -81,16 +81,16 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "project-session-explorer",
-          "title": "Project Session",
+          "id": "vscode-context-explorer",
+          "title": "VS Code Context",
           "icon": "resources/icon.svg"
         }
       ]
     },
     "views": {
-      "project-session-explorer": [
+      "vscode-context-explorer": [
         {
-          "id": "projectSessionExplorer",
+          "id": "contextMCPExplorer",
           "name": "Context Files",
           "type": "webview"
         }
@@ -98,28 +98,28 @@
     },
     "viewsWelcome": [
       {
-        "view": "projectSessionExplorer",
-        "contents": "No context files yet. Use Ctrl+L to add the current file or Ctrl+I to add selected code.\n[Clear Context](command:projectSession.clearContext)"
+        "view": "contextMCPExplorer",
+        "contents": "No context files yet. Use Ctrl+L to add the current file or Ctrl+I to add selected code.\n[Clear Context](command:contextMCP.clearContext)"
       }
     ],
     "menus": {
       "commandPalette": [
         {
-          "command": "projectSession.showWebview",
+          "command": "contextMCP.showWebview",
           "group": "navigation"
         }
       ],
       "view/item/context": [
         {
-          "command": "projectSession.removeContextFile",
-          "when": "view == projectSessionExplorer && viewItem == contextFile",
+          "command": "contextMCP.removeContextFile",
+          "when": "view == contextMCPExplorer && viewItem == contextFile",
           "group": "inline"
         }
       ],
       "view/title": [
         {
-          "command": "projectSessionExplorer.refresh",
-          "when": "view == projectSessionExplorer",
+          "command": "contextMCPExplorer.refresh",
+          "when": "view == contextMCPExplorer",
           "group": "navigation"
         }
       ]

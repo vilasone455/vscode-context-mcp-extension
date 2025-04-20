@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { ProjectSession, ContextFile, ContextFileWithId } from '../models/project-session';
+import { ContextManager, ContextFile, ContextFileWithId } from '../models/project-session';
 import { getGitignoreFilter } from '../utils/gitignore-filter';
 import { getTerminalContent, clearContext, removeContextFile, addFileToContextByPath } from '../commands';
 
@@ -18,12 +18,12 @@ interface FileOpenRequest {
 }
 
 // WebView Provider class for the sidebar
-export class ProjectSessionWebviewProvider implements vscode.WebviewViewProvider {
+export class ContextMCPWebviewProvider implements vscode.WebviewViewProvider {
   private _view?: vscode.WebviewView;
   private readonly _extensionUri: vscode.Uri;
-  private readonly _session: ProjectSession;
+  private readonly _session: ContextManager;
 
-  constructor(extensionUri: vscode.Uri, session: ProjectSession) {
+  constructor(extensionUri: vscode.Uri, session: ContextManager) {
     this._extensionUri = extensionUri;
     this._session = session;
   }
@@ -74,7 +74,7 @@ export class ProjectSessionWebviewProvider implements vscode.WebviewViewProvider
           }
         } catch (error) {
           console.error('Error handling message:', error);
-          vscode.window.showErrorMessage(`Error in Project Session Manager: ${error instanceof Error ? error.message : String(error)}`);
+          vscode.window.showErrorMessage(`Error in VS Code Context MCP Extension: ${error instanceof Error ? error.message : String(error)}`);
         }
       });
 
@@ -84,7 +84,7 @@ export class ProjectSessionWebviewProvider implements vscode.WebviewViewProvider
       }, 500);
     } catch (error) {
       console.error('Error initializing webview:', error);
-      vscode.window.showErrorMessage(`Failed to initialize Project Session Manager: ${error instanceof Error ? error.message : String(error)}`);
+      vscode.window.showErrorMessage(`Failed to initialize VS Code Context MCP Extension: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -257,7 +257,7 @@ export class ProjectSessionWebviewProvider implements vscode.WebviewViewProvider
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Project Session Manager</title>
+        <title>VS Code Context MCP Extension</title>
         <style>
             body {
                 padding: 0;

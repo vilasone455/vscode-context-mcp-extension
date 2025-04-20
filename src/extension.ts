@@ -3,8 +3,8 @@ import express from 'express';
 import { Request, Response } from 'express'; // Added proper Express types
 import * as path from 'path';
 import axios from 'axios';
-import { ProjectSession } from './models/project-session';
-import { ProjectSessionWebviewProvider } from './webview/webview-provider';
+import { ContextManager } from './models/project-session';
+import { ContextMCPWebviewProvider } from './webview/webview-provider';
 import { 
   getTerminalContent,
   addFileToContext,
@@ -14,15 +14,15 @@ import {
 } from './commands';
 
 // Global instances
-let session = new ProjectSession();
-let webviewProvider: ProjectSessionWebviewProvider | null = null;
+let session = new ContextManager();
+let webviewProvider: ContextMCPWebviewProvider | null = null;
 let currentProjectPath: string | null = null;
 let server: any | null = null;
 const PORT = 4569;
 
 // Extension activation
 export function activate(context: vscode.ExtensionContext) {
-  console.log('Merged extension is now active');
+  console.log('VS Code Context MCP Extension is now active');
 
   // Set project path
   const folders = vscode.workspace.workspaceFolders;
@@ -31,39 +31,39 @@ export function activate(context: vscode.ExtensionContext) {
     console.log('Project path set to:', currentProjectPath);
   }
 
-  // Initialize Project Session Manager
-  webviewProvider = new ProjectSessionWebviewProvider(context.extensionUri, session);
+  // Initialize VS Code Context MCP
+  webviewProvider = new ContextMCPWebviewProvider(context.extensionUri, session);
   
   // Register the WebviewView provider for the sidebar
   context.subscriptions.push(
-    vscode.window.registerWebviewViewProvider('projectSessionExplorer', webviewProvider)
+    vscode.window.registerWebviewViewProvider('contextMCPExplorer', webviewProvider)
   );
 
   // Register commands for keyboard shortcuts
   let getTerminalContentCmd = vscode.commands.registerCommand(
-    'projectSession.getTerminalContent', 
+    'contextMCP.getTerminalContent', 
     () => getTerminalContent()
   );
 
   let addFileToContextCmd = vscode.commands.registerCommand(
-    'projectSession.addFileToContext', 
+    'contextMCP.addFileToContext', 
     () => addFileToContext(session, context, webviewProvider)
   );
   
   let addSelectionToContextCmd = vscode.commands.registerCommand(
-    'projectSession.addSelectionToContext', 
+    'contextMCP.addSelectionToContext', 
     () => addSelectionToContext(session, context, webviewProvider)
   );
   
   let clearContextCmd = vscode.commands.registerCommand(
-    'projectSession.clearContext', 
+    'contextMCP.clearContext', 
     () => clearContext(session, webviewProvider)
   );
   
   // Add command to remove a specific context file
   context.subscriptions.push(
     vscode.commands.registerCommand(
-      'projectSession.removeContextFile', 
+      'contextMCP.removeContextFile', 
       (id: string) => removeContextFile(session, parseInt(id), webviewProvider)
     )
   );
@@ -285,5 +285,5 @@ function severityToString(severity: vscode.DiagnosticSeverity): string {
 // Deactivation function
 export function deactivate() {
   // Save session data if needed
-  console.log('Merged extension deactivated');
+  console.log('VS Code Context MCP Extension deactivated');
 }

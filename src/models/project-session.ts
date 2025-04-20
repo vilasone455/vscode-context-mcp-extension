@@ -1,5 +1,5 @@
 // Data model for the session
-export class ProjectSession {
+export class ContextManager {
   // List of context files
   public context_file_lists: ContextFile[];
   // List of currently open tabs

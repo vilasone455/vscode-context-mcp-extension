@@ -1,72 +1,159 @@
 # Project Session Manager
 
-A Visual Studio Code extension that allows you to save and manage your project sessions with context files.
+A Visual Studio Code extension that enables developers to efficiently manage project context by storing and organizing relevant files and code snippets. This extension helps maintain context when working on complex projects, making it easier to switch between tasks while preserving important references.
 
 ## Features
 
-- Add entire files to your context
-- Add specific code selections to your context
-- Quickly find and open files in your workspace
-- View and manage all your context files in a dedicated sidebar
+### Context Management
+- **Add Files to Context**: Quickly add entire files to your current session with `Ctrl+L` (Cmd+L on macOS)
+- **Add Code Selections**: Capture specific code snippets with `Ctrl+I` (Cmd+I on macOS)
+- **Terminal Integration**: Access terminal content directly from your session
+- **Context Explorer**: View and manage all context files in a dedicated sidebar
 
-## Project Structure
+### REST API Integration
+The extension provides a REST API server running on port 4569, allowing external tools to integrate with your VS Code environment:
 
+- Get project path information
+- Access currently open files and their content
+- Retrieve terminal outputs
+- View project diagnostics (errors and warnings)
+- Manage session context via HTTP endpoints
+
+## Installation
+
+1. Download the `.vsix` file from the [releases page](https://github.com/vilasone455/vscode-project-context-mcp/releases)
+2. In VS Code, go to the Extensions view (Ctrl+Shift+X)
+3. Click on the "..." in the top right of the Extensions view
+4. Select "Install from VSIX..." and choose the downloaded file
+5. Reload VS Code when prompted
+
+## Getting Started
+
+1. Open your project in VS Code
+2. Navigate to the Project Session Manager sidebar icon in the Activity Bar
+3. Use keyboard shortcuts to add files or code snippets to your context:
+   - `Ctrl+L` (Cmd+L on macOS): Add the current file to context
+   - `Ctrl+I` (Cmd+I on macOS): Add selected code to context
+4. View and manage your context files in the sidebar
+
+## REST API Reference
+
+The extension runs a local REST API server on port 4569 with the following endpoints:
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/project-path` | GET | Get the current project path |
+| `/current-file` | GET | Get details of the currently active file |
+| `/open-tabs` | GET | Get a list of all open tabs in the editor |
+| `/problems` | GET | Get all diagnostic problems (errors, warnings) |
+| `/session-context` | GET | Get the current session context |
+| `/get-file-list-and-clear` | GET | Retrieve and clear the current file list |
+| `/terminal-content` | GET | Get the current terminal content |
+| `/shutdown` | POST | Gracefully shut down the API server |
+
+### API Examples
+
+#### Get Current File Information
 ```
-project-session-manager/
-├── dist/                      # Compiled output
-├── src/                       # Main source code
-│   ├── commands/              # Command implementations
-│   ├── models/                # Data models
-│   ├── services/              # Business logic services
-│   ├── utils/                 # Utility functions
-│   ├── webview/               # Webview implementation
-│   └── extension.ts           # Main extension entry point
-├── webview/                   # Webview frontend
-│   ├── dist/                  # Compiled webview output
-│   └── src/                   # React webview source files
-├── resources/                 # Icons and other resources
-└── package.json               # Extension manifest
+GET http://localhost:4569/current-file
 ```
+
+Response:
+```json
+{
+  "fileName": "c:\\Projects\\example\\src\\index.js",
+  "languageId": "javascript",
+  "lineCount": 42,
+  "uri": "file:///c%3A/Projects/example/src/index.js",
+  "isDirty": false,
+  "isUntitled": false,
+  "content": "// File content here..."
+}
+```
+
+#### Get Open Editor Tabs
+```
+GET http://localhost:4569/open-tabs
+```
+
+Response:
+```json
+{
+  "openTabs": [
+    {
+      "fileName": "c:\\Projects\\example\\src\\index.js",
+      "languageId": "javascript",
+      "uri": "file:///c%3A/Projects/example/src/index.js",
+      "isActive": true,
+      "isDirty": false,
+      "isUntitled": false
+    },
+    {
+      "fileName": "c:\\Projects\\example\\package.json",
+      "languageId": "json",
+      "uri": "file:///c%3A/Projects/example/package.json",
+      "isActive": false,
+      "isDirty": true,
+      "isUntitled": false
+    }
+  ]
+}
+```
+
+
+
+
 
 ## Development
 
 ### Prerequisites
 
-- Node.js and npm
+- Node.js (v14+) and npm
 - Visual Studio Code
 
 ### Setup
 
 1. Clone the repository
-2. Run `npm install` to install dependencies
-3. Run `npm run build` to compile the extension and webview
+```
+git clone https://github.com/vilasone455/vscode-project-context-mcp.git
+cd project-session-manager
+```
 
-### Development Workflow
+2. Install dependencies
+```
+npm install
+```
 
-1. Make changes to the TypeScript files in `src/` or React components in `webview/src/`
-2. Run `npm run watch` to automatically compile changes
-3. Press F5 in VS Code to launch the extension in debug mode
-
-## Building
-
-To build the extension for production:
-
+3. Build the extension
 ```
 npm run build
 ```
 
-This will compile both the extension and webview.
+### Development Workflow
 
-## Architecture
+1. Start the watch process to automatically compile changes:
+```
+npm run watch
+```
 
-The extension follows SOLID principles:
+2. Press F5 in VS Code to launch the extension in debug mode
 
-- **Single Responsibility**: Each class and module has a specific purpose
-- **Open/Closed**: Components are designed to be extended without modification
-- **Liskov Substitution**: Types are substitutable for their base types
-- **Interface Segregation**: Interfaces are specific to client needs
-- **Dependency Inversion**: High-level modules depend on abstractions
+3. Make changes to the code
+
+4. To package the extension for distribution:
+```
+vsce package
+```
+
+
+
+## Troubleshooting
+
+- **Port Conflicts**: If you see an error about port 4569 being in use, you may have another instance of the extension running. Restart VS Code to resolve this.
+
+
+
 
 ## License
 
-MIT
+This project is licensed under the MIT License - see the LICENSE file for details.

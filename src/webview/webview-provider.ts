@@ -225,6 +225,11 @@ export class ProjectSessionWebviewProvider implements vscode.WebviewViewProvider
     await addFileToContextByPath(this._session, payload, this);
   }
 
+  // Refresh the webview with current context files
+  public refresh() {
+    this.sendContextFilesToWebview();
+  }
+
   // Open a file at specific lines
   private _openFile(payload: FileOpenRequest) {
     const filePath = payload.path;

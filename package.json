@@ -6,7 +6,9 @@
   "engines": {
     "vscode": "^1.60.0"
   },
-  "categories": ["Other"],
+  "categories": [
+    "Other"
+  ],
   "activationEvents": [
     "onView:projectSessionExplorer",
     "onCommand:projectSession.getTerminalContent",
@@ -15,7 +17,7 @@
     "onCommand:projectSession.showWebview",
     "onCommand:projectSession.clearContext",
     "onCommand:projectSession.removeContextFile"
-    ],
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "configuration": {
@@ -23,7 +25,12 @@
       "properties": {
         "projectSession.search.excludePatterns": {
           "type": "array",
-          "default": ["node_modules/**", "**/node_modules/**", ".git/**", "**/dist/**"],
+          "default": [
+            "node_modules/**",
+            "**/node_modules/**",
+            ".git/**",
+            "**/dist/**"
+          ],
           "description": "File patterns to exclude from search results (in addition to .gitignore)"
         }
       }
@@ -126,11 +133,12 @@
     "build": "webpack --mode production"
   },
   "devDependencies": {
-    "@types/vscode": "^1.60.0",
+    "@types/express": "^5.0.1",
+    "@types/minimatch": "^3.0.5",
+    "@types/node": "^16.0.0",
     "@types/react": "^18.0.0",
     "@types/react-dom": "^18.0.0",
-    "@types/node": "^16.0.0",
-    "@types/minimatch": "^3.0.5",
+    "@types/vscode": "^1.60.0",
     "css-loader": "^6.8.1",
     "eslint": "^8.0.0",
     "glob": "^7.2.0",
@@ -143,6 +151,8 @@
     "webpack-cli": "^5.1.4"
   },
   "dependencies": {
+    "axios": "^1.8.4",
+    "express": "^5.1.0",
     "minimatch": "^3.1.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"

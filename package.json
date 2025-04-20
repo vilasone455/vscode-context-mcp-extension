@@ -2,7 +2,7 @@
   "name": "project-session-manager",
   "displayName": "Project Session Manager",
   "description": "Store and manage project sessions with context files",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "engines": {
     "vscode": "^1.60.0"
   },

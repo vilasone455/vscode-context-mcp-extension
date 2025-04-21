@@ -2,7 +2,7 @@
   "name": "vscode-context-mcp-extension",
   "displayName": "VS Code Context MCP Extension",
   "description": "Store and manage project sessions with context files",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "engines": {
     "vscode": "^1.60.0"
   },

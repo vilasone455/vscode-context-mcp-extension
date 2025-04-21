@@ -154,7 +154,6 @@ function startServer(context: vscode.ExtensionContext) {
   });
   
   app.get('/session-context', (_req: Request, res: Response) => {
-    session.context_file_lists = [];
 
     res.json({
       currentPath : currentProjectPath,
@@ -162,9 +161,12 @@ function startServer(context: vscode.ExtensionContext) {
       activeTab: getActiveEditorInfo(),
       openTabs: getOpenTabsInfo() 
     });
+    session.context_file_lists = [];
+
     if (webviewProvider) {
       webviewProvider.refresh();
     }
+
 
   });
 

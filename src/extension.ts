@@ -14,6 +14,7 @@ import {
   clearContext,
 } from './commands';
 
+import * as fs from 'fs/promises'; // Use fs/promises for async file operations
 let session = new ContextManager();
 let webviewProvider: ContextMCPWebviewProvider | null = null;
 let currentProjectPath: string | null = null;
@@ -34,7 +35,7 @@ const swaggerOptions = {
       schemas: {}       // ← must be an object, even if empty
     }
   },
-  apis: [ path.join(__dirname, '**/*.js') ],  // ← absolute glob to your compiled code
+  apis: [path.join(__dirname, '**/*.js')],  // ← absolute glob to your compiled code
 };
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
@@ -383,6 +384,211 @@ function startServer(context: vscode.ExtensionContext) {
     }));
     res.json({ problems });
   });
+
+  /**
+ * @openapi
+ * /file:
+ *   get:
+ *     operationId: getFile
+ *     summary: Get the raw text of a file by relative path
+ *     parameters:
+ *       - in: query
+ *         name: relativePath
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Relative path of the file to retrieve
+ *     responses:
+ *       200:
+ *         description: File content returned
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required:
+ *                 - relativePath
+ *                 - content
+ *               properties:
+ *                 relativePath:
+ *                   type: string
+ *                 content:
+ *                   type: string
+ *       400:
+ *         description: Missing relativePath parameter
+ *       500:
+ *         description: Server error reading the file
+ */
+  app.get('/file', async (req: Request, res: Response): Promise<void> => {
+    const rel = req.query.relativePath as string;
+    if (!rel) {
+      // note: no `return res.…()`, just call and then `return;`
+      res.status(400).json({ error: 'relativePath query parameter is required' });
+      return;
+    }
+
+    try {
+      const full = path.resolve(currentProjectPath || '.', rel);
+      const content = await fs.readFile(full, 'utf8');
+      res.json({ relativePath: rel, content });
+      // once you call res.json, you don’t return its result
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+
+
+  /**
+ * @openapi
+ * /file:
+ *   post:
+ *     operationId: createFile
+ *     summary: Create a new file with the given content
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - relativePath
+ *               - content
+ *             properties:
+ *               relativePath:
+ *                 type: string
+ *                 description: Relative path where the file will be created
+ *               content:
+ *                 type: string
+ *                 description: The file’s content
+ *     responses:
+ *       201:
+ *         description: File created successfully
+ *       400:
+ *         description: Missing required fields in body
+ *       500:
+ *         description: Server error creating file
+ */
+  app.post(
+    '/file',
+    async (req: Request, res: Response): Promise<void> => {
+      const { relativePath, content } = req.body;
+      if (!relativePath || content === undefined) {
+        res
+          .status(400)
+          .json({ error: 'Both relativePath and content are required in the body' });
+        return;
+      }
+      try {
+        const full = path.resolve(currentProjectPath || '.', relativePath);
+        await fs.mkdir(path.dirname(full), { recursive: true });
+        await fs.writeFile(full, content, 'utf8');
+        res.status(201).json({ message: 'File created', relativePath });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    }
+  );
+
+  /**
+   * @openapi
+   * /file:
+   *   put:
+   *     operationId: updateFile
+   *     summary: Overwrite an existing file’s content
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - relativePath
+   *               - newContent
+   *             properties:
+   *               relativePath:
+   *                 type: string
+   *                 description: Relative path of the file to update
+   *               newContent:
+   *                 type: string
+   *                 description: New content to write into the file
+   *     responses:
+   *       200:
+   *         description: File updated successfully
+   *       400:
+   *         description: Missing required fields in body
+   *       500:
+   *         description: Server error updating file
+   */
+  app.put(
+    '/file',
+    async (req: Request, res: Response): Promise<void> => {
+      const { relativePath, newContent } = req.body;
+      if (!relativePath || newContent === undefined) {
+        res
+          .status(400)
+          .json({ error: 'Both relativePath and newContent are required in the body' });
+        return;
+      }
+      try {
+        const full = path.resolve(currentProjectPath || '.', relativePath);
+        await fs.access(full);
+        await fs.writeFile(full, newContent, 'utf8');
+        res.json({ message: 'File updated', relativePath });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    }
+  );
+
+  /**
+   * @openapi
+   * /move-file:
+   *   post:
+   *     operationId: moveFile
+   *     summary: Move or rename a file
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - from
+   *               - to
+   *             properties:
+   *               from:
+   *                 type: string
+   *                 description: Current relative path of the file
+   *               to:
+   *                 type: string
+   *                 description: New relative path for the file
+   *     responses:
+   *       200:
+   *         description: File moved successfully
+   *       400:
+   *         description: Missing required fields in body
+   *       500:
+   *         description: Server error moving file
+   */
+  app.post(
+    '/move-file',
+    async (req: Request, res: Response): Promise<void> => {
+      const { from, to } = req.body;
+      if (!from || !to) {
+        res.status(400).json({ error: 'from and to are required in the body' });
+        return;
+      }
+      try {
+        const src = path.resolve(currentProjectPath || '.', from);
+        const dest = path.resolve(currentProjectPath || '.', to);
+        await fs.mkdir(path.dirname(dest), { recursive: true });
+        await fs.rename(src, dest);
+        res.json({ message: 'File moved', from, to });
+      } catch (err: any) {
+        res.status(500).json({ error: err.message });
+      }
+    }
+  );
 
   // Serve OpenAPI JSON
   app.get('/openapi.json', (_req: Request, res: Response) => {

@@ -134,24 +134,24 @@ function findSymbol(
 }
 
 function findNthMatch(content: string, search: string | RegExp, n: number): { start: number; end: number } | null {
-    let matchResult: RegExpExecArray | null;
-    let count = 0;
-    const regex = typeof search === 'string'
-        ? new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')
-        : new RegExp(search.source, search.flags.includes('g') ? search.flags : search.flags + 'g');
+  let matchResult: RegExpExecArray | null;
+  let count = 0;
+  const regex = typeof search === 'string'
+    ? new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')
+    : new RegExp(search.source, search.flags.includes('g') ? search.flags : search.flags + 'g');
 
-    regex.lastIndex = 0; // Reset regex state
+  regex.lastIndex = 0; // Reset regex state
 
-    while ((matchResult = regex.exec(content)) !== null) {
-        count++;
-        if (count === n) {
-            return {
-                start: matchResult.index,
-                end: matchResult.index + matchResult[0].length,
-            };
-        }
+  while ((matchResult = regex.exec(content)) !== null) {
+    count++;
+    if (count === n) {
+      return {
+        start: matchResult.index,
+        end: matchResult.index + matchResult[0].length,
+      };
     }
-    return null;
+  }
+  return null;
 }
 
 /**
@@ -172,7 +172,7 @@ export async function createTextEdits(
     // Use the document's URI if available, fallback to __filename for non-VSCode documents
     const documentPath = document.getUri?.() || __filename;
     const uri = vscode.Uri.file(documentPath);
-    
+
     documentSymbols = await vscode.commands.executeCommand<vscode.DocumentSymbol[]>(
       'vscode.executeDocumentSymbolProvider',
       uri
@@ -186,12 +186,12 @@ export async function createTextEdits(
     // --- Phase 1: Determine the Range or Position for the edit ---
     switch (edit.match_type) {
       case 'symbol': {
-        if (!documentSymbols) {throw new Error('Symbol provider failed or was not available for a symbol-based edit.');}
+        if (!documentSymbols) { throw new Error('Symbol provider failed or was not available for a symbol-based edit.'); }
         const symbol = findSymbol(documentSymbols, edit);
         if (!symbol) {
           let errorMsg = `Could not find symbol: "${edit.symbolName}"`;
-          if (edit.symbolKind) {errorMsg += ` of kind ${edit.symbolKind}`;}
-          if (edit.parentSymbolName) {errorMsg += ` inside parent "${edit.parentSymbolName}"`;}
+          if (edit.symbolKind) { errorMsg += ` of kind ${edit.symbolKind}`; }
+          if (edit.parentSymbolName) { errorMsg += ` inside parent "${edit.parentSymbolName}"`; }
           throw new Error(errorMsg);
         }
         range = symbol.range;
@@ -243,7 +243,7 @@ export async function createTextEdits(
         throw new Error(`Unhandled match type: ${(exhaustiveCheck as any).match_type}`);
     }
 
-    if (!range) {throw new Error(`Could not determine a range for the edit: ${JSON.stringify(edit)}`);}
+    if (!range) { throw new Error(`Could not determine a range for the edit: ${JSON.stringify(edit)}`); }
 
     // --- Phase 2: Apply the Action using the determined range ---
     switch (edit.action_type) {
@@ -256,7 +256,14 @@ export async function createTextEdits(
       case 'insert-before': {
         // For 'line' match, this adds a new line before. For others, it's just before the content.
         const newText = edit.match_type === 'line' ? `${edit.newText}\n` : edit.newText;
-        position = range.start;
+
+        // For symbol matching, insert at beginning of line, not at symbol start
+        if (edit.match_type === 'symbol') {
+          position = { line: range.start.line, character: 0 };
+        } else {
+          position = range.start;
+        }
+
         textEdits.push({ range: { start: position, end: position }, newText });
         break;
       }

@@ -570,7 +570,7 @@ function setupRoutes(app: express.Express): void {
   app.post('/modify-file', handleModifyFile);
   
   // Symbol and testing endpoints
-  app.get('/test-symbol-count', handleTestSymbolCount);
+  // app.get('/test-symbol-count', handleTestSymbolCount);
   app.post('/search-symbols', handleSearchSymbols);
   app.post('/get-symbol-definition', handleGetSymbolDefinition);
   

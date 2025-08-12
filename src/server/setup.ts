@@ -22,7 +22,7 @@ import {
   handleDirectoryTree,
   handleMoveFile,
   handleSearchFiles,
-  handleTestSymbolCount,
+  handleSearchFileContent,
   handleSearchSymbols,
   handleGetSymbolDefinition,
   handleListFileSymbols,
@@ -51,7 +51,7 @@ export function setupRoutes(app: express.Express): void {
   app.get('/test', (_, res) => {
     console.log('Test endpoint hit');
     res.json({
-      message: 'KKK from VsssS Code Extension API!',
+      message: 'Hello from VS Code Context MCP Extension API!',
       timestamp: new Date().toISOString(),
       status: 'working'
     });
@@ -84,9 +84,9 @@ export function setupRoutes(app: express.Express): void {
   app.post('/directory-tree', handleDirectoryTree);
   app.post('/move-file', handleMoveFile);
   app.post('/search-files', handleSearchFiles);
+  app.post('/search-file-content', handleSearchFileContent);
 
   // Symbol and testing endpoints
-  app.get('/test-symbol-count', handleTestSymbolCount);
   app.post('/search-symbols', handleSearchSymbols);
   app.post('/get-symbol-definition', handleGetSymbolDefinition);
   app.post('/list-file-symbols', handleListFileSymbols);

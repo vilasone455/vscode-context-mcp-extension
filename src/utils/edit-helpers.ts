@@ -50,15 +50,12 @@ class VscodeDocumentAdapter implements DocumentLike {
 /**
  * Converts abstract TextEdit to vscode.TextEdit
  */
-function convertToVscodeTextEdit(textEdit: TextEdit , document : vscode.TextDocument): vscode.TextEdit {
-  
-  const startLine = textEdit.range.start.line;
-  const endLine = textEdit.range.end.line;
+function convertToVscodeTextEdit(textEdit: TextEdit, document: vscode.TextDocument): vscode.TextEdit {
 
-  const startPos = new vscode.Position(startLine, 0);
-  const endPos = new vscode.Position(endLine, document.lineAt(endLine).text.length);
-  const range = new vscode.Range(startPos, endPos);
-
+  const range = new vscode.Range(
+    new vscode.Position(textEdit.range.start.line, textEdit.range.start.character),
+    new vscode.Position(textEdit.range.end.line, textEdit.range.end.character)
+  );
 
   if (textEdit.newText === '') {
     return vscode.TextEdit.delete(range);
@@ -66,6 +63,12 @@ function convertToVscodeTextEdit(textEdit: TextEdit , document : vscode.TextDocu
     textEdit.range.start.character === textEdit.range.end.character) {
     return vscode.TextEdit.insert(range.start, textEdit.newText);
   } else {
+    const startLine = textEdit.range.start.line;
+    const endLine = textEdit.range.end.line;
+
+    const startPos = new vscode.Position(startLine, 0);
+    const endPos = new vscode.Position(endLine, document.lineAt(endLine).text.length);
+    const range = new vscode.Range(startPos, endPos);
     return vscode.TextEdit.replace(range, textEdit.newText);
   }
 }

@@ -8,67 +8,6 @@ import * as vscode from 'vscode';
 import { SymbolSearchResult, SymbolDefinitionResult, CompactSymbol } from '../types';
 import { getCurrentProjectPath } from '../server/state';
 
-export async function handleTestSymbolCount(_req: Request, res: Response): Promise<void> {
-  try {
-    // Get the current extension.ts file path
-    const extensionFilePath = __filename;
-    const uri = vscode.Uri.file(extensionFilePath);
-
-    // Get document symbols for the current file
-    const documentSymbols = await vscode.commands.executeCommand<vscode.DocumentSymbol[]>(
-      'vscode.executeDocumentSymbolProvider',
-      uri
-    );
-
-    if (!documentSymbols) {
-      res.json({ success: false, error: 'No symbols found' });
-      return;
-    }
-
-    // Count symbols recursively
-    const countSymbols = (symbols: vscode.DocumentSymbol[]): number => {
-      let count = 0;
-      for (const symbol of symbols) {
-        count += 1; // Count this symbol
-        count += countSymbols(symbol.children); // Count nested symbols
-      }
-      return count;
-    };
-
-    const totalSymbols = countSymbols(documentSymbols);
-
-    // Create detailed breakdown
-    const symbolBreakdown = documentSymbols.map(symbol => ({
-      name: symbol.name,
-      kind: vscode.SymbolKind[symbol.kind],
-      range: {
-        start: { line: symbol.range.start.line, character: symbol.range.start.character },
-        end: { line: symbol.range.end.line, character: symbol.range.end.character }
-      },
-      childCount: symbol.children.length,
-      children: symbol.children.map(child => ({
-        name: child.name,
-        kind: vscode.SymbolKind[child.kind]
-      }))
-    }));
-
-    res.json({
-      success: true,
-      file: 'extension.ts',
-      totalSymbols: totalSymbols,
-      topLevelSymbols: documentSymbols.length,
-      symbolBreakdown: symbolBreakdown
-    });
-
-  } catch (error) {
-    console.error('Error counting symbols:', error);
-    res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred'
-    });
-  }
-}
-
 export async function handleSearchSymbols(req: Request, res: Response): Promise<void> {
   try {
     const { query, maxResults = 10 } = req.body;

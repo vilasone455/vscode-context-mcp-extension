@@ -14,7 +14,6 @@ export interface EditorInfo {
 
 export interface TabInfo {
   fileName: string;
-  languageId: string;
   uri: string;
   isActive: boolean;
   isDirty: boolean;

@@ -67,7 +67,7 @@ function initializeWorkspace(): void {
 function initializeWebviewProvider(context: vscode.ExtensionContext): void {
   const webviewProvider = new ContextMCPWebviewProvider(context.extensionUri, getSession());
   setWebviewProvider(webviewProvider);
-  
+
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider('contextMCPExplorer', webviewProvider)
   );
@@ -78,14 +78,20 @@ function initializeWebviewProvider(context: vscode.ExtensionContext): void {
 // =============================================================================
 
 export function activate(context: vscode.ExtensionContext): void {
+  console.log('--- EXTENSION ACTIVATING ---'); // <-- ADD THIS
   console.log('VS Code Context MCP Extension is now active');
+
+  // vs code message show 
+  vscode.window.showInformationMessage('VS Code Context MCP Extension is now active');
 
   // Initialize workspace and webview
   initializeWorkspace();
   initializeWebviewProvider(context);
-  
+
   // Register all commands
   registerCommands(context);
+
+
 
   // Start the server
   shutdownExistingServer().then(() => {
@@ -97,7 +103,6 @@ export function activate(context: vscode.ExtensionContext): void {
 
 export function deactivate(): void {
   console.log('VS Code Context MCP Extension deactivated');
-  
-  // Clean up the app reference
+
   setApp(null);
 }

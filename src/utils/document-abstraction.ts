@@ -22,6 +22,7 @@ export interface DocumentLike {
   lineCount: number;
   lineAt(line: number): { range: Range };
   positionAt(offset: number): Position;
+  getUri?(): string; // Optional method to get the document URI
 }
 
 /**

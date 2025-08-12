@@ -1,6 +1,7 @@
 /**
  * Global state management for the VS Code Context MCP Extension
  */
+import * as vscode from 'vscode';
 
 import express from 'express';
 import { ContextManager } from '../models/project-session';
@@ -20,6 +21,12 @@ export function setWebviewProvider(provider: ContextMCPWebviewProvider): void {
 
 export function setCurrentProjectPath(path: string | null): void {
   currentProjectPath = path;
+  // show vscode message  
+  if (path) {
+    vscode.window.showInformationMessage(`Current project path set to: ${path}`);
+  } else {
+    vscode.window.showInformationMessage('Current project path cleared');
+  }
 }
 
 export function setServer(serverInstance: any): void {

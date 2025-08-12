@@ -1,6 +1,3 @@
-/**
- * Server setup and initialization for the VS Code Context MCP Extension
- */
 
 import express from 'express';
 import axios from 'axios';
@@ -17,9 +14,18 @@ import {
   handleProblems,
   handleModifyFile,
   handleGetFilesLineCount,
+  handleReadFile,
+  handleReadMultipleFiles,
+  handleWriteFile,
+  handleCreateDirectory,
+  handleListDirectory,
+  handleDirectoryTree,
+  handleMoveFile,
+  handleSearchFiles,
   handleTestSymbolCount,
   handleSearchSymbols,
   handleGetSymbolDefinition,
+  handleListFileSymbols,
   handleShutdown,
   handleNotFound
 } from '../routes';
@@ -33,14 +39,25 @@ export function initializeExpressApp(): express.Express {
 export async function shutdownExistingServer(): Promise<void> {
   try {
     await axios.post('http://localhost:' + PORT + '/shutdown');
-    console.log('Successfully sent shutdown signal to existing server');
+    vscode.window.showInformationMessage('Existing server shutdown successfully');
     await new Promise(resolve => setTimeout(resolve, 1000));
   } catch (err) {
-    console.log('No existing server detected or unable to communicate with it');
+    // No existing server detected or unable to communicate with it
   }
 }
 
+
 export function setupRoutes(app: express.Express): void {
+  app.get('/test', (_, res) => {
+    console.log('Test endpoint hit');
+    res.json({
+      message: 'KKK from VsssS Code Extension API!',
+      timestamp: new Date().toISOString(),
+      status: 'working'
+    });
+  });
+
+
   // Basic endpoints
   app.get('/project-path', handleProjectPath);
   app.get('/current-file', handleCurrentFile);
@@ -49,17 +66,31 @@ export function setupRoutes(app: express.Express): void {
   app.get('/get-file-list-and-clear', handleGetFileListAndClear);
   app.get('/terminal-content', handleTerminalContent);
   app.get('/problems', handleProblems);
-  
+
   // File modification
-  app.post('/modify-file', handleModifyFile);  
+  app.post('/modify-file', handleModifyFile);
   // File line count
   app.post('/get-files-line-count', handleGetFilesLineCount);
+  // File reading
+  app.post('/read-file', handleReadFile);
+  app.post('/read-multiple-files', handleReadMultipleFiles);
   
+  // File writing
+  app.post('/write-file', handleWriteFile);
+  
+  // Directory operations
+  app.post('/create-directory', handleCreateDirectory);
+  app.post('/list-directory', handleListDirectory);
+  app.post('/directory-tree', handleDirectoryTree);
+  app.post('/move-file', handleMoveFile);
+  app.post('/search-files', handleSearchFiles);
+
   // Symbol and testing endpoints
   app.get('/test-symbol-count', handleTestSymbolCount);
   app.post('/search-symbols', handleSearchSymbols);
   app.post('/get-symbol-definition', handleGetSymbolDefinition);
-  
+  app.post('/list-file-symbols', handleListFileSymbols);
+
   // System endpoints
   app.post('/shutdown', handleShutdown);
   app.use(handleNotFound);
@@ -69,7 +100,7 @@ export function startServer(context: vscode.ExtensionContext): void {
   // Initialize the Express app
   const app = initializeExpressApp();
   setApp(app);
-  
+
   // Setup all routes
   setupRoutes(app);
 

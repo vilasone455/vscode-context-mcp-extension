@@ -3,37 +3,34 @@
  */
 
 import * as vscode from 'vscode';
-import { EditorInfo, TabInfo } from '../types';
+import * as path from 'path';
+import { getCurrentProjectPath } from '../server/state';
 
-export function getActiveEditorInfo(): EditorInfo | null {
+interface TabInfo{
+  file_name: string;
+  line_count: number;
+}
+
+export function getActiveEditorInfo(): TabInfo | null {
   const editor = vscode.window.activeTextEditor;
   if (editor) {
     const document = editor.document;
-    return {
-      fileName: document.fileName,
-      languageId: document.languageId,
-      lineCount: document.lineCount,
-      uri: document.uri.toString(),
-      isDirty: document.isDirty,
-      isUntitled: document.isUntitled,
-      content: document.getText()
-    };
+    const projectPath = getCurrentProjectPath();
+    if (projectPath && path.isAbsolute(document.fileName)) {
+      return {file_name : path.relative(projectPath, document.fileName) , line_count : document.lineCount};
+    }
+    return {file_name : document.fileName, line_count : document.lineCount};
   }
   return null;
 }
 
 export function getOpenTabsInfo(): TabInfo[] {
+  const projectPath = getCurrentProjectPath();
   return vscode.workspace.textDocuments.map(document => {
-    const isActiveDocument = vscode.window.activeTextEditor?.document === document;
-
-    return {
-      fileName: document.fileName,
-      languageId: document.languageId,
-      uri: document.uri.toString(),
-      isActive: isActiveDocument, // now always boolean
-      isDirty: document.isDirty,
-      isUntitled: document.isUntitled
-    };
+    if (projectPath && path.isAbsolute(document.fileName)) {
+      return { file_name: path.relative(projectPath, document.fileName), line_count: document.lineCount };
+    }
+    return { file_name: document.fileName, line_count: document.lineCount };
   });
 }
 

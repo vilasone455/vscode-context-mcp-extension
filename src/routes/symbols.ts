@@ -3,26 +3,28 @@
  */
 
 import { Request, Response } from 'express';
+import * as path from 'path';
 import * as vscode from 'vscode';
-import { SymbolSearchResult, SymbolDefinitionResult } from '../types';
+import { SymbolSearchResult, SymbolDefinitionResult, CompactSymbol } from '../types';
+import { getCurrentProjectPath } from '../server/state';
 
 export async function handleTestSymbolCount(_req: Request, res: Response): Promise<void> {
   try {
     // Get the current extension.ts file path
     const extensionFilePath = __filename;
     const uri = vscode.Uri.file(extensionFilePath);
-    
+
     // Get document symbols for the current file
     const documentSymbols = await vscode.commands.executeCommand<vscode.DocumentSymbol[]>(
       'vscode.executeDocumentSymbolProvider',
       uri
     );
-    
+
     if (!documentSymbols) {
       res.json({ success: false, error: 'No symbols found' });
       return;
     }
-    
+
     // Count symbols recursively
     const countSymbols = (symbols: vscode.DocumentSymbol[]): number => {
       let count = 0;
@@ -32,9 +34,9 @@ export async function handleTestSymbolCount(_req: Request, res: Response): Promi
       }
       return count;
     };
-    
+
     const totalSymbols = countSymbols(documentSymbols);
-    
+
     // Create detailed breakdown
     const symbolBreakdown = documentSymbols.map(symbol => ({
       name: symbol.name,
@@ -49,7 +51,7 @@ export async function handleTestSymbolCount(_req: Request, res: Response): Promi
         kind: vscode.SymbolKind[child.kind]
       }))
     }));
-    
+
     res.json({
       success: true,
       file: 'extension.ts',
@@ -57,12 +59,12 @@ export async function handleTestSymbolCount(_req: Request, res: Response): Promi
       topLevelSymbols: documentSymbols.length,
       symbolBreakdown: symbolBreakdown
     });
-    
+
   } catch (error) {
     console.error('Error counting symbols:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error occurred' 
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
     });
   }
 }
@@ -72,17 +74,17 @@ export async function handleSearchSymbols(req: Request, res: Response): Promise<
     const { query, maxResults = 10 } = req.body;
 
     if (!query || typeof query !== 'string') {
-      res.status(400).json({ 
-        success: false, 
-        error: 'Query parameter is required and must be a string' 
+      res.status(400).json({
+        success: false,
+        error: 'Query parameter is required and must be a string'
       });
       return;
     }
 
     if (maxResults && (typeof maxResults !== 'number' || maxResults < 1 || maxResults > 100)) {
-      res.status(400).json({ 
-        success: false, 
-        error: 'maxResults must be a number between 1 and 100' 
+      res.status(400).json({
+        success: false,
+        error: 'maxResults must be a number between 1 and 100'
       });
       return;
     }
@@ -117,9 +119,9 @@ export async function handleSearchSymbols(req: Request, res: Response): Promise<
     });
   } catch (error) {
     console.error('Error in search-symbols:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error occurred' 
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
     });
   }
 }
@@ -127,9 +129,9 @@ export async function handleSearchSymbols(req: Request, res: Response): Promise<
 export async function handleGetSymbolDefinition(req: Request, res: Response): Promise<void> {
   try {
     // Request body now requires 'symbols' and 'path'
-    const { 
-      symbols, 
-      path: filePath, 
+    const {
+      symbols,
+      path: filePath,
       includeContext = true,
       includeDocumentation = true
     } = req.body;
@@ -143,13 +145,13 @@ export async function handleGetSymbolDefinition(req: Request, res: Response): Pr
       return;
     }
     if (symbols.some(s => typeof s !== 'string')) {
-       res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'All elements in the symbols array must be strings'
       });
       return;
     }
-    
+
     // The 'path' parameter is now mandatory
     if (!filePath || typeof filePath !== 'string') {
       res.status(400).json({
@@ -158,9 +160,9 @@ export async function handleGetSymbolDefinition(req: Request, res: Response): Pr
       });
       return;
     }
-    
+
     // 2. Use VSCode's provider to find all occurrences for EACH symbol
-    const searchPromises = symbols.map(symbol => 
+    const searchPromises = symbols.map(symbol =>
       vscode.commands.executeCommand<vscode.SymbolInformation[]>(
         'vscode.executeWorkspaceSymbolProvider',
         symbol
@@ -169,7 +171,7 @@ export async function handleGetSymbolDefinition(req: Request, res: Response): Pr
 
     const searchResults = await Promise.all(searchPromises);
     const allFoundSymbols = searchResults.flat();
-    
+
     const uniqueSymbolsMap = new Map<string, vscode.SymbolInformation>();
     for (const symbolInfo of allFoundSymbols) {
       const key = `${symbolInfo.location.uri.toString()}:${symbolInfo.location.range.start.line}:${symbolInfo.location.range.start.character}`;
@@ -193,21 +195,21 @@ export async function handleGetSymbolDefinition(req: Request, res: Response): Pr
 
     // 3. Apply the mandatory path filter
     const originalCount = allSymbols.length;
-    
+
     const normalizePathForComparison = (path: string): string => {
       return path.replace(/\\/g, '/').toLowerCase();
     };
-    
+
     const targetPathNormalized = normalizePathForComparison(filePath);
-    
+
     const filteredSymbols = allSymbols.filter(s => {
       const symbolPath = s.location.uri.fsPath;
       const symbolPathNormalized = normalizePathForComparison(symbolPath);
-      
-      return symbolPathNormalized === targetPathNormalized || 
-             symbolPathNormalized.endsWith(targetPathNormalized);
+
+      return symbolPathNormalized === targetPathNormalized ||
+        symbolPathNormalized.endsWith(targetPathNormalized);
     });
-    
+
     // Since the path filter is always applied, we can provide a more specific error.
     if (filteredSymbols.length === 0) {
       res.status(404).json({
@@ -285,3 +287,99 @@ export async function handleGetSymbolDefinition(req: Request, res: Response): Pr
   }
 }
 
+export async function handleListFileSymbols(req: Request, res: Response): Promise<void> {
+  try {
+    const { path: filePath } = req.body;
+
+    // Validate input parameters
+    if (!filePath || typeof filePath !== 'string') {
+      res.status(400).json({
+        success: false,
+        error: 'path parameter is required and must be a string'
+      });
+      return;
+    }
+
+    // Resolve relative paths against the current project path
+    const projectPath = getCurrentProjectPath();
+    let resolvedPath: string;
+    if (path.isAbsolute(filePath)) {
+      resolvedPath = filePath;
+    } else {
+      if (!projectPath) {
+        res.status(400).json({
+          success: false,
+          error: 'No project path available to resolve relative path.'
+        });
+        return;
+      }
+      resolvedPath = path.resolve(projectPath, filePath);
+    }
+
+    // Convert to VS Code URI
+    let uri: vscode.Uri;
+    try {
+      uri = vscode.Uri.file(resolvedPath);
+    } catch (uriError) {
+      res.status(400).json({
+        success: false,
+        error: `Invalid file path: ${resolvedPath}`
+      });
+      return;
+    }
+
+    // Get document symbols for the specified file
+    const documentSymbols = await vscode.commands.executeCommand<vscode.DocumentSymbol[]>(
+      'vscode.executeDocumentSymbolProvider',
+      uri
+    );
+
+    if (!documentSymbols) {
+      res.json([]);
+      return;
+    }
+
+    // Convert to compact format (only depth 0-1)
+    const convertToCompactFormat = (symbols: vscode.DocumentSymbol[]): CompactSymbol[] => {
+      return symbols.map(symbol => ({
+        n: symbol.name,
+        k: vscode.SymbolKind[symbol.kind].toLowerCase(),
+        c: symbol.children.map(child => ({
+          n: child.name,
+          k: vscode.SymbolKind[child.kind].toLowerCase(),
+          c: [] // Only go to depth 1, so children of children are empty
+        }))
+      }));
+    };
+
+     const convertToKindNameFormat = (symbols: any[]): any => {
+      return symbols.reduce((accumulator, symbol) => {
+        // 1. Create the top-level key (e.g., "class:Logger")
+        const key = `${symbol.k}:${symbol.n}`;
+
+        // 2. Create the array of children strings (e.g., "method:clear")
+        const children = symbol.c.map((child: { k: any; n: any; }) => `${child.k}:${child.n}`);
+
+        // 3. Add the new key-value pair to the object we're building
+        accumulator[key] = children;
+
+        // 4. Return the updated object for the next iteration
+        return accumulator;
+      }, {} as any); // Start with an empty object
+    };
+
+
+    const compactSymbols = convertToCompactFormat(documentSymbols);
+
+    const trueCompactSymbols = convertToKindNameFormat(compactSymbols);
+   
+    res.json(trueCompactSymbols);
+
+  } catch (error) {
+    console.error('Error in list-file-symbols:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    });
+  }
+}

@@ -2,7 +2,7 @@
   "name": "vscode-context-mcp-extension",
   "displayName": "VS Code Context MCP Extension",
   "description": "Store and manage project sessions with context files",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "engines": {
     "vscode": "^1.60.0"
   },
@@ -132,10 +132,14 @@
     "test": "node ./test/runTest.js",
     "test:core": "npx ts-node src/tests/test-runner.ts",
     "test:no-lint": "node ./test/runTest.js",
+      "dev": "npm run watch",
     "watch": "webpack --watch --mode development",
     "demo:component": "npx ts-node src/tests/card-replacement-demo.ts",
     "demo:php": "npx ts-node src/tests/php-replacement-demo.ts",
-    "demo:typescript": "npx ts-node src/tests/typescripttest.ts",
+    "demo:typescript": "npx ts-node src/tests/calculateModification.ts",
+    "demo:typescript-fixed": "npx ts-node src/tests/calculateModification-fixed.ts",
+    "demo:typescript-preview": "npx ts-node src/tests/calculateModification-fixed.ts",
+    "demo:typescript-no-preview": "npx ts-node src/tests/calculateModification-fixed.ts --no-preview",
     "build": "webpack --mode production"
   },
   "devDependencies": {

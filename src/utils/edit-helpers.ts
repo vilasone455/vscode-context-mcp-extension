@@ -8,7 +8,7 @@ import { DocumentLike, TextEdit, Range, Position } from './document-abstraction'
  * Adapter class to make vscode.TextDocument compatible with DocumentLike interface
  */
 class VscodeDocumentAdapter implements DocumentLike {
-  constructor(private document: vscode.TextDocument) {}
+  constructor(private document: vscode.TextDocument) { }
 
   getText(): string {
     return this.document.getText();
@@ -41,21 +41,29 @@ class VscodeDocumentAdapter implements DocumentLike {
       character: vscodePos.character
     };
   }
+
+  getUri(): string {
+    return this.document.uri.fsPath;
+  }
 }
 
 /**
  * Converts abstract TextEdit to vscode.TextEdit
  */
-function convertToVscodeTextEdit(textEdit: TextEdit): vscode.TextEdit {
-  const range = new vscode.Range(
-    new vscode.Position(textEdit.range.start.line, textEdit.range.start.character),
-    new vscode.Position(textEdit.range.end.line, textEdit.range.end.character)
-  );
+function convertToVscodeTextEdit(textEdit: TextEdit , document : vscode.TextDocument): vscode.TextEdit {
+  
+  const startLine = textEdit.range.start.line;
+  const endLine = textEdit.range.end.line;
+
+  const startPos = new vscode.Position(startLine, 0);
+  const endPos = new vscode.Position(endLine, document.lineAt(endLine).text.length);
+  const range = new vscode.Range(startPos, endPos);
+
 
   if (textEdit.newText === '') {
     return vscode.TextEdit.delete(range);
-  } else if (textEdit.range.start.line === textEdit.range.end.line && 
-             textEdit.range.start.character === textEdit.range.end.character) {
+  } else if (textEdit.range.start.line === textEdit.range.end.line &&
+    textEdit.range.start.character === textEdit.range.end.character) {
     return vscode.TextEdit.insert(range.start, textEdit.newText);
   } else {
     return vscode.TextEdit.replace(range, textEdit.newText);
@@ -69,10 +77,10 @@ function convertToVscodeTextEdit(textEdit: TextEdit): vscode.TextEdit {
  * @param apiEdits An array of ApiEdit instructions.
  * @returns A promise that resolves to an array of vscode.TextEdit objects.
  */
-export async function createVscodeTextEdits(document: vscode.TextDocument, apiEdits: ApiEdit[] , filePath ?: string): Promise<vscode.TextEdit[]> {
+export async function createVscodeTextEdits(document: vscode.TextDocument, apiEdits: ApiEdit[]): Promise<vscode.TextEdit[]> {
   const adapter = new VscodeDocumentAdapter(document);
-  const textEdits = createTextEdits(adapter, apiEdits , filePath);
-  return textEdits.map(convertToVscodeTextEdit);
+  const textEdits = await createTextEdits(adapter, apiEdits);
+  return textEdits.map(textEdit => convertToVscodeTextEdit(textEdit, document));
 }
 
 /**
@@ -84,20 +92,20 @@ export async function createVscodeTextEdits(document: vscode.TextDocument, apiEd
 export async function applyVscodeEdits(filePath: string, edits: ApiEdit[]): Promise<boolean> {
   // Check if file exists first for a clearer error message.
   try {
-      await fs.promises.access(filePath, fs.constants.F_OK);
+    await fs.promises.access(filePath, fs.constants.F_OK);
   } catch (e) {
-      throw new Error(`File not found: ${filePath}`);
+    throw new Error(`File not found: ${filePath}`);
   }
 
   const uri = vscode.Uri.file(filePath);
   const document = await vscode.workspace.openTextDocument(uri);
-  const vscodeEdits = await createVscodeTextEdits(document, edits , filePath);
+  const vscodeEdits = await createVscodeTextEdits(document, edits);
 
   if (vscodeEdits.length === 0) {
     console.log('No edits to apply.');
-    return true; 
+    return true;
   }
-  
+
   const workspaceEdit = new vscode.WorkspaceEdit();
   workspaceEdit.set(uri, vscodeEdits);
 
@@ -107,6 +115,6 @@ export async function applyVscodeEdits(filePath: string, edits: ApiEdit[]): Prom
     // Save the document to ensure changes are written to disk.
     await document.save();
   }
-  
+
   return success;
 }

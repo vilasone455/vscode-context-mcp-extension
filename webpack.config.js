@@ -1,7 +1,8 @@
 const path = require('path');
+const TerserPlugin = require('terser-webpack-plugin');  // 📦 install this: `npm i -D terser-webpack-plugin`
 
-// Configuration for extension
 const extensionConfig = {
+  mode: 'production',      // ensure we’re actually minifying
   target: 'node',
   entry: './src/extension.ts',
   output: {
@@ -10,23 +11,25 @@ const extensionConfig = {
     libraryTarget: 'commonjs2'
   },
   devtool: 'source-map',
-  externals: {
-    vscode: 'commonjs vscode'
-  },
-  resolve: {
-    extensions: ['.ts', '.js']
-  },
+  externals: { vscode: 'commonjs vscode' },
+  resolve: { extensions: ['.ts', '.js'] },
   module: {
     rules: [
-      {
-        test: /\.ts$/,
-        exclude: /node_modules/,
-        use: [
-          {
-            loader: 'ts-loader'
+      { test: /\.ts$/, exclude: /node_modules/, use: ['ts-loader'] }
+    ]
+  },
+  optimization: {
+    minimize: true,
+    minimizer: [
+      new TerserPlugin({
+        extractComments: false,   // don’t yank comments to a separate file
+        terserOptions: {
+          format: {
+            // only strip comments *not* matching @openapi
+            comments: /@openapi/i  
           }
-        ]
-      }
+        }
+      })
     ]
   }
 };

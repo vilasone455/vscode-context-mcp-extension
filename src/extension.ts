@@ -177,54 +177,48 @@ function registerCommands(context: vscode.ExtensionContext): void {
   }
 
   async function createAnimalComplexTestCase(document: vscode.TextDocument, tracker: ChangeTracker) {
-    const content = document.getText();
-    const lines = content.split('\n');
-    
-    // Find line numbers for different methods
-    let getInfoStartLine = -1;
-    let getInfoEndLine = -1;
-    let eatStartLine = -1;
-    let eatEndLine = -1;
-    let classEndLine = -1;
-    
-    for (let i = 0; i < lines.length; i++) {
-      if (lines[i].includes('getInfo()')) {
-        getInfoStartLine = i;
-        // Find the end of getInfo method
-        for (let j = i + 1; j < lines.length; j++) {
-          if (lines[j].includes('}') && !lines[j].includes('${')) {
-            getInfoEndLine = j;
-            break;
-          }
-        }
-      }
-      
-      if (lines[i].includes('eat(food)')) {
-        eatStartLine = i;
-        // Find the end of eat method
-        for (let j = i + 1; j < lines.length; j++) {
-          if (lines[j].includes('}') && !lines[j].includes('${')) {
-            eatEndLine = j;
-            break;
-          }
-        }
-      }
-      
-      if (lines[i].includes('module.exports')) {
-        classEndLine = i - 1; // Line before module.exports
-      }
-    }
-    
-    const allChanges = [];
-    
-    // 1. Modify eat method content
-    if (eatStartLine !== -1 && eatEndLine !== -1) {
-      const eatRange = new vscode.Range(
-        new vscode.Position(eatStartLine, 0),
-        new vscode.Position(eatEndLine, lines[eatEndLine].length)
+    try {
+      // Use VSCode's Symbol Provider for accurate symbol finding (like edit-core.ts)
+      const uri = document.uri;
+      const documentSymbols = await vscode.commands.executeCommand<vscode.DocumentSymbol[]>(
+        'vscode.executeDocumentSymbolProvider',
+        uri
       );
       
-      const newEatMethod = `    eat(food) {
+      if (!documentSymbols || documentSymbols.length === 0) {
+        throw new Error('No symbols found in document');
+      }
+      
+      const allChanges = [];
+      
+      // Find the Animal class symbol
+      const animalClass = documentSymbols.find(symbol => 
+        symbol.name === 'Animal' && symbol.kind === vscode.SymbolKind.Class
+      );
+      
+      if (!animalClass) {
+        throw new Error('Animal class not found');
+      }
+      
+      // Find method symbols within the Animal class
+      const getInfoMethod = animalClass.children.find(child => 
+        child.name === 'getInfo' && child.kind === vscode.SymbolKind.Method
+      );
+      
+      const eatMethod = animalClass.children.find(child => 
+        child.name === 'eat' && child.kind === vscode.SymbolKind.Method
+      );
+      
+      console.log('Found symbols:', {
+        animalClass: animalClass?.name,
+        getInfoMethod: getInfoMethod?.name,
+        eatMethod: eatMethod?.name,
+        totalMethods: animalClass.children.length
+      });
+      
+      // 1. Replace eat method with enhanced version
+      if (eatMethod) {
+        const newEatMethod = `    eat(food) {
         console.log(\`\${this.name} is eagerly eating \${food}!\`);
         this.hunger = Math.max(0, this.hunger - 30);
         if (food === this.favoriteFood) {
@@ -232,55 +226,67 @@ function registerCommands(context: vscode.ExtensionContext): void {
             this.hunger = Math.max(0, this.hunger - 10); // Extra satisfaction
         }
     }`;
+        
+        const eatEdit = new vscode.TextEdit(eatMethod.range, newEatMethod);
+        const eatChanges = await tracker.addChanges(
+          document.uri.fsPath,
+          [eatEdit],
+          'Chunk 1: Enhanced eat method with favorites'
+        );
+        allChanges.push(eatChanges);
+      }
       
-      const eatEdit = new vscode.TextEdit(eatRange, newEatMethod);
-      const eatChanges = await tracker.addChanges(
-        document.uri.fsPath,
-        [eatEdit],
-        'Chunk 1: Enhanced eat method with favorites'
-      );
-      allChanges.push(eatChanges);
-    }
-    
-    // 2. Remove getInfo method
-    if (getInfoStartLine !== -1 && getInfoEndLine !== -1) {
-      const getInfoRange = new vscode.Range(
-        new vscode.Position(getInfoStartLine, 0),
-        new vscode.Position(getInfoEndLine + 1, 0) // Include the newline
+      // 2. Remove getInfo method completely
+      if (getInfoMethod) {
+        // Include the empty line after the method by extending the range
+        const extendedRange = new vscode.Range(
+          getInfoMethod.range.start,
+          new vscode.Position(getInfoMethod.range.end.line + 1, 0)
+        );
+        
+        const removeEdit = new vscode.TextEdit(extendedRange, '');
+        const removeChanges = await tracker.addChanges(
+          document.uri.fsPath,
+          [removeEdit],
+          'Chunk 2: Remove getInfo method'
+        );
+        allChanges.push(removeChanges);
+      }
+      
+      // 3. Add new sleep method before the last method (insert-before celebrateBirthday)
+      const celebrateBirthdayMethod = animalClass.children.find(child => 
+        child.name === 'celebrateBirthday' && child.kind === vscode.SymbolKind.Method
       );
       
-      const removeEdit = new vscode.TextEdit(getInfoRange, '');
-      const removeChanges = await tracker.addChanges(
-        document.uri.fsPath,
-        [removeEdit],
-        'Chunk 2: Remove getInfo method'
-      );
-      allChanges.push(removeChanges);
-    }
-    
-    // 3. Add new sleep method before class end
-    if (classEndLine !== -1) {
-      const insertPosition = new vscode.Position(classEndLine, 0);
-      const insertRange = new vscode.Range(insertPosition, insertPosition);
-      
-      const newSleepMethod = `
-    sleep(hours = 8) {
+      if (celebrateBirthdayMethod) {
+        // Insert at the beginning of the line where celebrateBirthday starts
+        const insertPosition = new vscode.Position(celebrateBirthdayMethod.range.start.line, 0);
+        const insertRange = new vscode.Range(insertPosition, insertPosition);
+        
+        const newSleepMethod = `    sleep(hours = 8) {
         console.log(\`\${this.name} is sleeping for \${hours} hours...\`);
         this.hunger = Math.min(100, this.hunger + (hours * 5));
         return \`\${this.name} feels refreshed after \${hours} hours of sleep!\`;
     }
+
 `;
+        
+        const addEdit = new vscode.TextEdit(insertRange, newSleepMethod);
+        const addChanges = await tracker.addChanges(
+          document.uri.fsPath,
+          [addEdit],
+          'Chunk 3: Add new sleep method'
+        );
+        allChanges.push(addChanges);
+      }
       
-      const addEdit = new vscode.TextEdit(insertRange, newSleepMethod);
-      const addChanges = await tracker.addChanges(
-        document.uri.fsPath,
-        [addEdit],
-        'Chunk 3: Add new sleep method'
-      );
-      allChanges.push(addChanges);
+      return allChanges;
+      
+    } catch (error) {
+      console.error('Error in createAnimalComplexTestCase:', error);
+      vscode.window.showErrorMessage(`Symbol-based editing failed: ${error}. File structure may have changed.`);
+      return [];
     }
-    
-    return allChanges;
   }
 
   async function createMultilineTestCase(document: vscode.TextDocument, tracker: ChangeTracker) {

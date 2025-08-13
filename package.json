@@ -2,7 +2,7 @@
   "name": "vscode-context-mcp-extension",
   "displayName": "VS Code Context MCP Extension",
   "description": "Store and manage project sessions with context files",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "engines": {
     "vscode": "^1.60.0"
   },
@@ -17,7 +17,11 @@
     "onCommand:contextMCP.addSelectionToContext",
     "onCommand:contextMCP.showWebview",
     "onCommand:contextMCP.clearContext",
-    "onCommand:contextMCP.removeContextFile"
+    "onCommand:contextMCP.removeContextFile",
+    "onCommand:mcp.acceptChange",
+    "onCommand:mcp.rejectChange",
+    "onCommand:mcp.testDiff",
+    "onCommand:mcp.showChanges"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -60,6 +64,26 @@
       {
         "command": "contextMCP.removeContextFile",
         "title": "Remove from Context"
+      },
+      {
+        "command": "mcp.acceptChange",
+        "title": "MCP: Accept Change",
+        "category": "MCP"
+      },
+      {
+        "command": "mcp.rejectChange",
+        "title": "MCP: Reject Change",
+        "category": "MCP"
+      },
+      {
+        "command": "mcp.testDiff",
+        "title": "MCP: Test Diff Highlighting",
+        "category": "MCP"
+      },
+      {
+        "command": "mcp.showChanges",
+        "title": "MCP: Show Pending Changes",
+        "category": "MCP"
       },
       {
         "command": "contextMCPExplorer.refresh",
@@ -132,7 +156,7 @@
     "test": "node ./test/runTest.js",
     "test:core": "npx ts-node src/tests/test-runner.ts",
     "test:no-lint": "node ./test/runTest.js",
-      "dev": "npm run watch",
+    "dev": "npm run watch",
     "watch": "webpack --watch --mode development",
     "demo:component": "npx ts-node src/tests/card-replacement-demo.ts",
     "demo:php": "npx ts-node src/tests/php-replacement-demo.ts",

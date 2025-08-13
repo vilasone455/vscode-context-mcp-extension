@@ -6,9 +6,11 @@
 import { Request, Response } from 'express';
 import * as fs from 'fs';
 import * as path from 'path';
-import { getCurrentProjectPath } from '../../server/state';
+import * as vscode from 'vscode';
+import { getCurrentProjectPath, getExtensionContext } from '../../server/state';
 import { ApplyEditsRequest } from '../../models/ApplyEditsRequest';
-import { applyVscodeEdits } from '../../utils/edit-helpers';
+import { createVscodeTextEdits } from '../../utils/edit-helpers';
+
 
 /**
  * Read file contents - POST /read-file
@@ -101,7 +103,7 @@ export async function handleWriteFile(req: Request, res: Response): Promise<void
     
     res.json({
       path: relativePath,
-      message: 'File written successfully'
+      message: 'File written successfully (pending approval)'
     });
   } catch (err: any) {
     console.error(`Error writing file ${resolvedPath}:`, err);
@@ -367,9 +369,30 @@ export async function handleModifyFile(req: Request, res: Response): Promise<voi
   }
 
   try {
-    console.log(`Received request to modify ${path.basename(resolvedPath)}: ${shortComment || 'No comment'}`);
-    const success = await applyVscodeEdits(resolvedPath, edits);
+    console.log(`Received ssssssss request to modify ${path.basename(resolvedPath)}: ${shortComment || 'No comment'}`);
+    
+    const uri = vscode.Uri.file(resolvedPath);
+    const document = await vscode.workspace.openTextDocument(uri);
+    const vscodeEdits = await createVscodeTextEdits(document, edits);
+    
+    if (vscodeEdits.length === 0) {
+      console.log('No edits to apply.');
+      res.json({ 
+        success: true, 
+        message: 'No edits to apply.',
+        path: path.isAbsolute(filePath) && projectPath ? path.relative(projectPath, resolvedPath) : filePath
+      });
+      return;
+    }
+    
+    // Apply the edits
+    const workspaceEdit = new vscode.WorkspaceEdit();
+    workspaceEdit.set(uri, vscodeEdits);
+    const success = await vscode.workspace.applyEdit(workspaceEdit);
+    
     if (success) {
+      await document.save();
+      
       // Convert absolute paths back to relative paths for consistent response
       const relativePath = path.isAbsolute(filePath) && projectPath 
         ? path.relative(projectPath, resolvedPath)
@@ -388,3 +411,5 @@ export async function handleModifyFile(req: Request, res: Response): Promise<voi
     res.status(500).json({ success: false, error: `Failed to apply edits: ${err.message}` });
   }
 }
+
+

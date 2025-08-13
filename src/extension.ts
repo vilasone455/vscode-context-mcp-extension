@@ -76,7 +76,7 @@ function registerCommands(context: vscode.ExtensionContext): void {
     }
   );
 
-  // Test command to demonstrate diff-based approve/reject
+  // Test command with multiple test case scenarios
   const testDiffCmd = vscode.commands.registerCommand(
     'mcp.testDiff',
     async () => {
@@ -86,32 +86,232 @@ function registerCommands(context: vscode.ExtensionContext): void {
         return;
       }
 
-      // Create a test change
       const document = activeEditor.document;
-      const range = new vscode.Range(
-        new vscode.Position(0, 0),
-        new vscode.Position(0, document.lineAt(0).text.length)
-      );
+      const fileName = path.basename(document.uri.fsPath);
       
-      const textEdit = new vscode.TextEdit(range, 'console.log("Hello World with Diff!");');
-      
+      // Define test case scenarios
+      const testCases = [
+        {
+          label: '🔧 Simple: Replace first line',
+          detail: 'Basic test - replaces the first line with a console.log',
+          id: 'simple'
+        },
+        {
+          label: '🏗️ Complex: Animal.js 3-chunk modification',
+          detail: 'Advanced test - modify eat(), add sleep(), remove getInfo()',
+          id: 'animal-complex',
+          fileCheck: 'animal.js'
+        },
+        {
+          label: '📝 Multi-line: Add function with body',
+          detail: 'Medium test - adds a complete function with multiple lines',
+          id: 'multiline'
+        }
+      ];
+
+      // Filter test cases based on current file
+      const availableTestCases = testCases.filter(testCase => {
+        if (testCase.fileCheck) {
+          return fileName.toLowerCase().includes(testCase.fileCheck.toLowerCase());
+        }
+        return true;
+      });
+
+      if (availableTestCases.length === 0) {
+        vscode.window.showErrorMessage('No test cases available for this file type');
+        return;
+      }
+
+      // Show test case selection
+      const selectedTestCase = await vscode.window.showQuickPick(availableTestCases, {
+        placeHolder: 'Select a test case to demonstrate diff highlighting',
+        canPickMany: false
+      });
+
+      if (!selectedTestCase) {
+        return;
+      }
+
       try {
-        const changes = await changeTracker.addChanges(
-          document.uri.fsPath,
-          [textEdit],
-          'Test diff highlighting'
-        );
+        let changes: any[] = [];
         
-        await changeDecorator.showDecorations(activeEditor, changes);
+        switch (selectedTestCase.id) {
+          case 'simple':
+            changes = await createSimpleTestCase(document, changeTracker);
+            break;
+          case 'animal-complex':
+            changes = await createAnimalComplexTestCase(document, changeTracker);
+            break;
+          case 'multiline':
+            changes = await createMultilineTestCase(document, changeTracker);
+            break;
+        }
         
-        vscode.window.showInformationMessage(
-          `✨ Created test change with diff highlighting! Use Accept/Reject commands.`
-        );
+        if (changes.length > 0) {
+          await changeDecorator.showDecorations(activeEditor, changes.flat());
+          
+          vscode.window.showInformationMessage(
+            `✨ Created ${selectedTestCase.label} with ${changes.flat().length} changes! Use "MCP: Show Pending Changes" to manage them.`
+          );
+        }
       } catch (error) {
-        vscode.window.showErrorMessage(`Failed to create test change: ${error}`);
+        vscode.window.showErrorMessage(`Failed to create test case: ${error}`);
       }
     }
   );
+
+  // Helper functions for different test cases
+  async function createSimpleTestCase(document: vscode.TextDocument, tracker: ChangeTracker) {
+    const range = new vscode.Range(
+      new vscode.Position(0, 0),
+      new vscode.Position(0, document.lineAt(0).text.length)
+    );
+    
+    const textEdit = new vscode.TextEdit(range, 'console.log("Hello World with Diff!");');
+    
+    return await tracker.addChanges(
+      document.uri.fsPath,
+      [textEdit],
+      'Simple: Replace first line'
+    );
+  }
+
+  async function createAnimalComplexTestCase(document: vscode.TextDocument, tracker: ChangeTracker) {
+    const content = document.getText();
+    const lines = content.split('\n');
+    
+    // Find line numbers for different methods
+    let getInfoStartLine = -1;
+    let getInfoEndLine = -1;
+    let eatStartLine = -1;
+    let eatEndLine = -1;
+    let classEndLine = -1;
+    
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].includes('getInfo()')) {
+        getInfoStartLine = i;
+        // Find the end of getInfo method
+        for (let j = i + 1; j < lines.length; j++) {
+          if (lines[j].includes('}') && !lines[j].includes('${')) {
+            getInfoEndLine = j;
+            break;
+          }
+        }
+      }
+      
+      if (lines[i].includes('eat(food)')) {
+        eatStartLine = i;
+        // Find the end of eat method
+        for (let j = i + 1; j < lines.length; j++) {
+          if (lines[j].includes('}') && !lines[j].includes('${')) {
+            eatEndLine = j;
+            break;
+          }
+        }
+      }
+      
+      if (lines[i].includes('module.exports')) {
+        classEndLine = i - 1; // Line before module.exports
+      }
+    }
+    
+    const allChanges = [];
+    
+    // 1. Modify eat method content
+    if (eatStartLine !== -1 && eatEndLine !== -1) {
+      const eatRange = new vscode.Range(
+        new vscode.Position(eatStartLine, 0),
+        new vscode.Position(eatEndLine, lines[eatEndLine].length)
+      );
+      
+      const newEatMethod = `    eat(food) {
+        console.log(\`\${this.name} is eagerly eating \${food}!\`);
+        this.hunger = Math.max(0, this.hunger - 30);
+        if (food === this.favoriteFood) {
+            console.log('Yum! This is my favorite!');
+            this.hunger = Math.max(0, this.hunger - 10); // Extra satisfaction
+        }
+    }`;
+      
+      const eatEdit = new vscode.TextEdit(eatRange, newEatMethod);
+      const eatChanges = await tracker.addChanges(
+        document.uri.fsPath,
+        [eatEdit],
+        'Chunk 1: Enhanced eat method with favorites'
+      );
+      allChanges.push(eatChanges);
+    }
+    
+    // 2. Remove getInfo method
+    if (getInfoStartLine !== -1 && getInfoEndLine !== -1) {
+      const getInfoRange = new vscode.Range(
+        new vscode.Position(getInfoStartLine, 0),
+        new vscode.Position(getInfoEndLine + 1, 0) // Include the newline
+      );
+      
+      const removeEdit = new vscode.TextEdit(getInfoRange, '');
+      const removeChanges = await tracker.addChanges(
+        document.uri.fsPath,
+        [removeEdit],
+        'Chunk 2: Remove getInfo method'
+      );
+      allChanges.push(removeChanges);
+    }
+    
+    // 3. Add new sleep method before class end
+    if (classEndLine !== -1) {
+      const insertPosition = new vscode.Position(classEndLine, 0);
+      const insertRange = new vscode.Range(insertPosition, insertPosition);
+      
+      const newSleepMethod = `
+    sleep(hours = 8) {
+        console.log(\`\${this.name} is sleeping for \${hours} hours...\`);
+        this.hunger = Math.min(100, this.hunger + (hours * 5));
+        return \`\${this.name} feels refreshed after \${hours} hours of sleep!\`;
+    }
+`;
+      
+      const addEdit = new vscode.TextEdit(insertRange, newSleepMethod);
+      const addChanges = await tracker.addChanges(
+        document.uri.fsPath,
+        [addEdit],
+        'Chunk 3: Add new sleep method'
+      );
+      allChanges.push(addChanges);
+    }
+    
+    return allChanges;
+  }
+
+  async function createMultilineTestCase(document: vscode.TextDocument, tracker: ChangeTracker) {
+    // Add a complete function at the end of the file
+    const lastLine = document.lineCount - 1;
+    const insertPosition = new vscode.Position(lastLine, document.lineAt(lastLine).text.length);
+    const insertRange = new vscode.Range(insertPosition, insertPosition);
+    
+    const newFunction = `
+
+// New utility function added by test
+function calculateStats(animals) {
+    const totalAge = animals.reduce((sum, animal) => sum + animal.age, 0);
+    const averageAge = totalAge / animals.length;
+    
+    return {
+        count: animals.length,
+        totalAge,
+        averageAge: Math.round(averageAge * 100) / 100,
+        species: [...new Set(animals.map(a => a.species))]
+    };
+}`;
+    
+    const textEdit = new vscode.TextEdit(insertRange, newFunction);
+    
+    return await tracker.addChanges(
+      document.uri.fsPath,
+      [textEdit],
+      'Multi-line: Add utility function'
+    );
+  }
 
   // Command to show all pending changes
   const showChangesCmd = vscode.commands.registerCommand(

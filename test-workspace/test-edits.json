@@ -1,0 +1,169 @@
+{
+  "test_scenarios": [
+    {
+      "name": "Simple Insert After",
+      "description": "Test basic insert-after functionality",
+      "filePath": "animal.js",
+      "shortComment": "Add play method",
+      "edits": [
+        {
+          "action_type": "insert-after",
+          "match_type": "symbol",
+          "symbolName": "celebrateBirthday",
+          "newText": "\n    play(activity = 'fetch') {\n        if (this.hunger > 80)\n            return `${this.name} is too hungry to play!`;\n        \n        return `${this.name} is playing ${activity}!`;\n    }"
+        }
+      ]
+    },
+    {
+      "name": "Replace and Insert",
+      "description": "Test replace and insert operations",
+      "filePath": "animal.js",
+      "shortComment": "Replace method and add new one",
+      "edits": [
+        {
+          "action_type": "replace",
+          "match_type": "symbol",
+          "symbolName": "introduce",
+          "newText": "introduce() {\n        return `Hi, I'm ${this.name}, a ${this.species}!`;\n    }"
+        },
+        {
+          "action_type": "insert-after",
+          "match_type": "symbol",
+          "symbolName": "introduce",
+          "newText": "\n    \n    sleep() {\n        return `${this.name} is sleeping peacefully.`;\n    }"
+        }
+      ]
+    },
+    {
+      "name": "Multiple Modifications",
+      "description": "Test multiple modifications at once",
+      "filePath": "animal.js",
+      "shortComment": "Multiple changes",
+      "edits": [
+        {
+          "action_type": "replace",
+          "match_type": "str",
+          "text": "this.hunger = 50;",
+          "newText": "this.hunger = 0;"
+        },
+        {
+          "action_type": "replace",
+          "match_type": "str",
+          "text": "this.favoriteFood = 'kibble';",
+          "newText": "this.favoriteFood = 'treats';"
+        }
+      ]
+    },
+    {
+      "name": "Line-based Edit",
+      "description": "Test line-based editing",
+      "filePath": "animal.js",
+      "shortComment": "Line edit",
+      "edits": [
+        {
+          "action_type": "replace-line",
+          "line_number": 1,
+          "newText": "class Animal {"
+        }
+      ]
+    },
+    {
+      "name": "String Replace",
+      "description": "Test string replacement",
+      "filePath": "animal.js",
+      "shortComment": "String replace",
+      "edits": [
+        {
+          "action_type": "replace",
+          "match_type": "str",
+          "text": "kibble",
+          "newText": "premium food"
+        }
+      ]
+    },
+    {
+      "name": "🔥 Diff Highlighting - Mixed Change",
+      "description": "Test diff-style highlighting with mixed additions and deletions",
+      "filePath": "animal.js",
+      "shortComment": "Mixed change test",
+      "edits": [
+        {
+          "action_type": "replace",
+          "match_type": "str",
+          "text": "return `Hello, I'm ${this.name} and I'm a ${this.species}!`;",
+          "newText": "return `Hi there! I'm ${this.name}, a happy ${this.species}!`;"
+        }
+      ]
+    },
+    {
+      "name": "🔥 Diff Highlighting - Complex Modification",
+      "description": "Test complex modification with multiple changes in one line",
+      "filePath": "animal.js",
+      "shortComment": "Complex modification",
+      "edits": [
+        {
+          "action_type": "replace",
+          "match_type": "str",
+          "text": "console.log(`${this.name} is eating ${food}`);",
+          "newText": "console.log(`🐾 ${this.name} is enjoying ${food}!`);"
+        }
+      ]
+    },
+    {
+      "name": "🔥 Diff Highlighting - Addition Only",
+      "description": "Test pure addition highlighting",
+      "filePath": "animal.js",
+      "shortComment": "Pure addition",
+      "edits": [
+        {
+          "action_type": "insert-after",
+          "match_type": "symbol",
+          "symbolName": "play",
+          "newText": "\n    \n    dance() {\n        return `${this.name} is dancing! 🕺`;\n    }"
+        }
+      ]
+    },
+    {
+      "name": "🔥 Diff Highlighting - Deletion Only",
+      "description": "Test pure deletion highlighting",
+      "filePath": "animal.js",
+      "shortComment": "Pure deletion",
+      "edits": [
+        {
+          "action_type": "replace",
+          "match_type": "symbol",
+          "symbolName": "dance",
+          "newText": ""
+        }
+      ]
+    },
+    {
+      "name": "🔥 Diff Highlighting - Multi-line Mixed",
+      "description": "Test multi-line changes with mixed additions and deletions",
+      "filePath": "animal.js",
+      "shortComment": "Multi-line mixed change",
+      "edits": [
+        {
+          "action_type": "replace",
+          "match_type": "symbol",
+          "symbolName": "play",
+          "newText": "play(activity = 'fetch') {\n        if (this.hunger > 80) {\n            return `${this.name} is too hungry to play!`;\n        }\n        \n        this.hunger += 10;\n        return `${this.name} is playing ${activity}!`;\n    }"
+        }
+      ]
+    },
+    {
+      "name": "🔥 Diff Highlighting - Multi-line Function",
+      "description": "Test multi-line function replacement with diff highlighting",
+      "filePath": "animal.js",
+      "shortComment": "Multi-line function change",
+      "edits": [
+        {
+          "action_type": "replace",
+          "match_type": "symbol",
+          "symbolName": "introduce",
+          "newText": "introduce() {\n        const greeting = `Hi there! I'm ${this.name}`;\n        const description = `a happy ${this.species}!`;\n        return `${greeting}, ${description}`;\n    }"
+        }
+      ]
+    }
+  ]
+}

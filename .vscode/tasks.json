@@ -1,0 +1,31 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "npm",
+      "script": "build",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": "$tsc",
+      "label": "npm: build",
+      "detail": "Build the extension"
+    },
+    {
+      "type": "npm",
+      "script": "watch",
+      "group": "build",
+      "problemMatcher": "$tsc-watch",
+      "isBackground": true,
+      "label": "npm: watch",
+      "detail": "Watch mode for development"
+    },
+    {
+      "type": "shell",
+      "label": "Quick Reload",
+      "command": "echo 'Press Ctrl+R in the Extension Host window to reload'",
+      "group": "none"
+    }
+  ]
+}

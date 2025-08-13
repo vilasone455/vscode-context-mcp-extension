@@ -5,11 +5,61 @@
       "name": "Run Extension",
       "type": "extensionHost",
       "request": "launch",
-      "args": ["--extensionDevelopmentPath=${workspaceFolder}"],
-      // Point this to your Webpack output directory (usually 'dist')
-      "outFiles": ["${workspaceFolder}/dist/**/*.js"],
-      // This is the magic line that runs your watch script before launching
-      "preLaunchTask": "npm: watch"
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}",
+        "${workspaceFolder}/test-workspace"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/dist/**/*.js"
+      ],
+      "preLaunchTask": "npm: build",
+      "env": {
+        "NODE_ENV": "development"
+      }
+    },
+    {
+      "name": "Run Extension (Clean)",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}",
+        "--disable-extensions",
+        "${workspaceFolder}/test-workspace"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/dist/**/*.js"
+      ],
+      "preLaunchTask": "npm: build"
+    },
+    {
+      "name": "Run Extension (Development)", 
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}",
+        "--disable-extensions",
+        "${workspaceFolder}/test-workspace"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/dist/**/*.js"
+      ],
+      "preLaunchTask": "npm: build",
+      "env": {
+        "NODE_ENV": "development"
+      }
+    },
+    {
+      "name": "Extension Tests",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}",
+        "--extensionTestsPath=${workspaceFolder}/out/test/suite/index"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/out/test/**/*.js"
+      ],
+      "preLaunchTask": "npm: test-compile"
     }
   ]
 }

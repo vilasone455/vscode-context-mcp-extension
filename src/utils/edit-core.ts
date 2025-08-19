@@ -268,10 +268,16 @@ export async function createTextEdits(
         break;
       }
       case 'insert-after': {
-        // For 'line' match, this adds a new line after. For others, it's just after the content.
-        const newText = edit.match_type === 'line' ? `\n${edit.newText}` : edit.newText;
-        position = range.end;
-        textEdits.push({ range: { start: position, end: position }, newText });
+        if (edit.match_type === 'symbol') {
+          const endLine = range.end.line;
+          position = document.lineAt(endLine).range.end;
+          const newText = `\n${edit.newText}`;
+          textEdits.push({ range: { start: position, end: position }, newText });
+        } else {
+          const newText = edit.match_type === 'line' ? `\n${edit.newText}` : edit.newText;
+          position = range.end;
+          textEdits.push({ range: { start: position, end: position }, newText });
+        }
         break;
       }
       case 'prepend': {

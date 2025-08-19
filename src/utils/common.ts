@@ -40,6 +40,3 @@ export const formatWithLineNumbers = (content: string) => {
 
     return newContent;
 }
-
-// Re-export MCP helpers for convenience
-export * from './mcp-helpers';

@@ -16,6 +16,10 @@ class Animal {
         this.hunger = Math.max(0, this.hunger - 25);
     }
 
+    introduce() {
+        return `Hello, I'm ${this.name} and I'm a ${this.species}!`;
+    }
+
     celebrateBirthday() {
         this.age++;
         return `Happy birthday to ${this.name}! Now ${this.age} years old.`;

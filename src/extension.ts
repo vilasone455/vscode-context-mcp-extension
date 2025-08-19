@@ -6,7 +6,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { ContextMCPWebviewProvider } from './webview/webview-provider';
-import { setWebviewProvider, setCurrentProjectPath, setApp, setExtensionContext } from './server/state';
+import { setWebviewProvider, setCurrentProjectPath, setApp } from './server/state';
 import { shutdownExistingServer, startServer } from './server/setup';
 import {
   getTerminalContent,
@@ -17,6 +17,8 @@ import {
 } from './commands';
 import { getSession, getWebviewProvider } from './server/state';
 import { ChangeTracker, ChangeDecorator } from './change-tracking';
+import { createVscodeTextEdits } from './utils/edit-helpers';
+import { ApplyEditsRequest } from './models/ApplyEditsRequest';
 
 // =============================================================================
 // EXTENSION LIFECYCLE FUNCTIONS
@@ -51,11 +53,17 @@ function registerCommands(context: vscode.ExtensionContext): void {
   // Basic change tracking commands
   const changeTracker = new ChangeTracker();
   const changeDecorator = new ChangeDecorator(changeTracker);
-  
-  context.subscriptions.push({
-    dispose: () => changeDecorator.dispose()
+
+
+
+
+  context.subscriptions.push( {
+    dispose: () => {
+      changeDecorator.dispose();
+    }
   });
-  
+
+
   const acceptChangeCmd = vscode.commands.registerCommand(
     'mcp.acceptChange',
     async (changeId: string) => {
@@ -88,7 +96,7 @@ function registerCommands(context: vscode.ExtensionContext): void {
 
       const document = activeEditor.document;
       const fileName = path.basename(document.uri.fsPath);
-      
+
       // Define test case scenarios
       const testCases = [
         {
@@ -134,7 +142,7 @@ function registerCommands(context: vscode.ExtensionContext): void {
 
       try {
         let changes: any[] = [];
-        
+
         switch (selectedTestCase.id) {
           case 'simple':
             changes = await createSimpleTestCase(document, changeTracker);
@@ -146,10 +154,10 @@ function registerCommands(context: vscode.ExtensionContext): void {
             changes = await createMultilineTestCase(document, changeTracker);
             break;
         }
-        
+
         if (changes.length > 0) {
-          await changeDecorator.showDecorations(activeEditor, changes.flat());
-          
+          await changeDecorator.showDecorations(activeEditor, changes);
+
           vscode.window.showInformationMessage(
             `✨ Created ${selectedTestCase.label} with ${changes.flat().length} changes! Use "MCP: Show Pending Changes" to manage them.`
           );
@@ -166,9 +174,9 @@ function registerCommands(context: vscode.ExtensionContext): void {
       new vscode.Position(0, 0),
       new vscode.Position(0, document.lineAt(0).text.length)
     );
-    
+
     const textEdit = new vscode.TextEdit(range, 'console.log("Hello World with Diff!");');
-    
+
     return await tracker.addChanges(
       document.uri.fsPath,
       [textEdit],
@@ -179,109 +187,80 @@ function registerCommands(context: vscode.ExtensionContext): void {
   async function createAnimalComplexTestCase(document: vscode.TextDocument, tracker: ChangeTracker) {
     try {
       // Use VSCode's Symbol Provider for accurate symbol finding (like edit-core.ts)
-      const uri = document.uri;
-      const documentSymbols = await vscode.commands.executeCommand<vscode.DocumentSymbol[]>(
-        'vscode.executeDocumentSymbolProvider',
-        uri
-      );
-      
-      if (!documentSymbols || documentSymbols.length === 0) {
-        throw new Error('No symbols found in document');
-      }
-      
-      const allChanges = [];
-      
-      // Find the Animal class symbol
-      const animalClass = documentSymbols.find(symbol => 
-        symbol.name === 'Animal' && symbol.kind === vscode.SymbolKind.Class
-      );
-      
-      if (!animalClass) {
-        throw new Error('Animal class not found');
-      }
-      
-      // Find method symbols within the Animal class
-      const getInfoMethod = animalClass.children.find(child => 
-        child.name === 'getInfo' && child.kind === vscode.SymbolKind.Method
-      );
-      
-      const eatMethod = animalClass.children.find(child => 
-        child.name === 'eat' && child.kind === vscode.SymbolKind.Method
-      );
-      
-      console.log('Found symbols:', {
-        animalClass: animalClass?.name,
-        getInfoMethod: getInfoMethod?.name,
-        eatMethod: eatMethod?.name,
-        totalMethods: animalClass.children.length
-      });
-      
-      // 1. Replace eat method with enhanced version
-      if (eatMethod) {
-        const newEatMethod = `    eat(food) {
-        console.log(\`\${this.name} is eagerly eating \${food}!\`);
-        this.hunger = Math.max(0, this.hunger - 30);
-        if (food === this.favoriteFood) {
-            console.log('Yum! This is my favorite!');
-            this.hunger = Math.max(0, this.hunger - 10); // Extra satisfaction
-        }
-    }`;
-        
-        const eatEdit = new vscode.TextEdit(eatMethod.range, newEatMethod);
-        const eatChanges = await tracker.addChanges(
-          document.uri.fsPath,
-          [eatEdit],
-          'Chunk 1: Enhanced eat method with favorites'
-        );
-        allChanges.push(eatChanges);
-      }
-      
-      // 2. Remove getInfo method completely
-      if (getInfoMethod) {
-        // Include the empty line after the method by extending the range
-        const extendedRange = new vscode.Range(
-          getInfoMethod.range.start,
-          new vscode.Position(getInfoMethod.range.end.line + 1, 0)
-        );
-        
-        const removeEdit = new vscode.TextEdit(extendedRange, '');
-        const removeChanges = await tracker.addChanges(
-          document.uri.fsPath,
-          [removeEdit],
-          'Chunk 2: Remove getInfo method'
-        );
-        allChanges.push(removeChanges);
-      }
-      
-      // 3. Add new sleep method before the last method (insert-before celebrateBirthday)
-      const celebrateBirthdayMethod = animalClass.children.find(child => 
-        child.name === 'celebrateBirthday' && child.kind === vscode.SymbolKind.Method
-      );
-      
-      if (celebrateBirthdayMethod) {
-        // Insert at the beginning of the line where celebrateBirthday starts
-        const insertPosition = new vscode.Position(celebrateBirthdayMethod.range.start.line, 0);
-        const insertRange = new vscode.Range(insertPosition, insertPosition);
-        
-        const newSleepMethod = `    sleep(hours = 8) {
-        console.log(\`\${this.name} is sleeping for \${hours} hours...\`);
-        this.hunger = Math.min(100, this.hunger + (hours * 5));
-        return \`\${this.name} feels refreshed after \${hours} hours of sleep!\`;
-    }
 
-`;
-        
-        const addEdit = new vscode.TextEdit(insertRange, newSleepMethod);
-        const addChanges = await tracker.addChanges(
-          document.uri.fsPath,
-          [addEdit],
-          'Chunk 3: Add new sleep method'
-        );
-        allChanges.push(addChanges);
+      let inputs: ApplyEditsRequest = {
+        "filePath": document.uri.fsPath,
+        "shortComment": "Rewrite eat method, add sleep method, remove getInfo method",
+        "edits": [
+          {
+            "action_type": "delete",
+            "match_type": "symbol",
+            "symbolName": "getInfo",
+            "symbolKind": "Method"
+          },
+          {
+            "action_type": "replace",
+            "match_type": "symbol",
+            "symbolName": "eat",
+            "symbolKind": "Method",
+            "newText": "    eat(food) {\n        if (food === this.favoriteFood) {\n            console.log(`${this.name} loves eating ${food}!`);\n            this.hunger = Math.max(0, this.hunger - 40);\n        } else {\n            console.log(`${this.name} is eating ${food} but prefers ${this.favoriteFood}`);\n            this.hunger = Math.max(0, this.hunger - 20);\n        }\n        return this.hunger;\n    }"
+          },
+          {
+            "action_type": "insert-after",
+            "match_type": "symbol",
+            "symbolName": "eat",
+            "symbolKind": "Method",
+            "newText": "\n    sleep(hours) {\n        console.log(`${this.name} is sleeping for ${hours} hours`);\n        this.hunger = Math.min(100, this.hunger + (hours * 5));\n        return `${this.name} woke up feeling refreshed!`;\n    }"
+          }
+        ]
       }
-      
-      return allChanges;
-      
+
+      const vscodeEdits = await createVscodeTextEdits(document, inputs.edits);
+
+      console.log(JSON.stringify(vscodeEdits))
+
+      console.log("Edit list...");
+
+      vscodeEdits.forEach((edit, index) => {
+        console.log(`\n--- Edit ${index + 1} ---`);
+        console.log(`Range: Line ${edit.range.start.line + 1}, Col ${edit.range.start.character} to Line ${edit.range.end.line + 1}, Col ${edit.range.end.character}`);
+        console.log(`New Text: ${JSON.stringify(edit.newText)}`);
+
+        // Show the operation type based on the edit
+        if (edit.newText === '') {
+          console.log(`Operation: DELETE`);
+        } else if (edit.range.start.line === edit.range.end.line && edit.range.start.character === edit.range.end.character) {
+          console.log(`Operation: INSERT`);
+        } else {
+          console.log(`Operation: REPLACE`);
+        }
+
+        // Show affected text length
+        const startPos = edit.range.start;
+        const endPos = edit.range.end;
+        const affectedLines = endPos.line - startPos.line + 1;
+        console.log(`Affected lines: ${affectedLines}`);
+      });
+
+      console.log(`\nTotal edits: ${vscodeEdits.length}`);
+      const workspaceEdit = new vscode.WorkspaceEdit();
+      workspaceEdit.set(document.uri, vscodeEdits);
+      const success = await vscode.workspace.applyEdit(workspaceEdit);
+
+      if (success) {
+        await document.save();
+
+      }
+
+      // return []
+
+      return await tracker.addChanges(
+        document.uri.fsPath,
+        vscodeEdits,
+        'Complex case'
+      );
+
+
     } catch (error) {
       console.error('Error in createAnimalComplexTestCase:', error);
       vscode.window.showErrorMessage(`Symbol-based editing failed: ${error}. File structure may have changed.`);
@@ -294,7 +273,7 @@ function registerCommands(context: vscode.ExtensionContext): void {
     const lastLine = document.lineCount - 1;
     const insertPosition = new vscode.Position(lastLine, document.lineAt(lastLine).text.length);
     const insertRange = new vscode.Range(insertPosition, insertPosition);
-    
+
     const newFunction = `
 
 // New utility function added by test
@@ -309,9 +288,9 @@ function calculateStats(animals) {
         species: [...new Set(animals.map(a => a.species))]
     };
 }`;
-    
+
     const textEdit = new vscode.TextEdit(insertRange, newFunction);
-    
+
     return await tracker.addChanges(
       document.uri.fsPath,
       [textEdit],
@@ -330,7 +309,7 @@ function calculateStats(animals) {
       }
 
       const changes = changeTracker.getPendingChanges(activeEditor.document.uri.fsPath);
-      
+
       if (changes.length === 0) {
         vscode.window.showInformationMessage('No pending changes for this file');
         return;
@@ -402,7 +381,6 @@ export function activate(context: vscode.ExtensionContext): void {
   console.log('VS Code Context MCP Extension is now active');
 
   // Set extension context in global state
-  setExtensionContext(context);
 
   // vs code message show 
   vscode.window.showInformationMessage('VS Code Context MCP Extension is now active');

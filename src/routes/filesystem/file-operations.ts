@@ -7,7 +7,7 @@ import { Request, Response } from 'express';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { getCurrentProjectPath, getExtensionContext } from '../../server/state';
+import { getCurrentProjectPath } from '../../server/state';
 import { ApplyEditsRequest } from '../../models/ApplyEditsRequest';
 import { createVscodeTextEdits } from '../../utils/edit-helpers';
 

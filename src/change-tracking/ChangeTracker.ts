@@ -1,18 +1,12 @@
 import * as vscode from 'vscode';
 import { PendingChange, FileChangeSet } from './types';
 
-/**
- * Simple change tracker for approve/reject workflow
- * No persistence, no overlapping detection, no complex state management
- */
 export class ChangeTracker {
   private files = new Map<string, FileChangeSet>();
   private onDidChangeEmitter = new vscode.EventEmitter<string>();
   public onDidChange = this.onDidChangeEmitter.event;
 
-  /**
-   * Add new changes to track with proper original content capture
-   */
+
   async addChanges(filePath: string, textEdits: vscode.TextEdit[], description: string): Promise<PendingChange[]> {
     // Ensure we have the original file content captured
     await this.ensureOriginalContentCaptured(filePath);
@@ -41,9 +35,6 @@ export class ChangeTracker {
     return newChanges;
   }
 
-  /**
-   * Approve a change - remove from tracking
-   */
   async approveChange(changeId: string): Promise<boolean> {
     const change = this.findChange(changeId);
     if (!change) {
@@ -56,25 +47,16 @@ export class ChangeTracker {
     return true;
   }
 
-  /**
-   * Reject a change - revert to original content
-   */
   async rejectChange(changeId: string): Promise<boolean> {
     console.log(`❌ Rejecting change ${changeId}`);
     return false;
   }
 
-  /**
-   * Get all pending changes for a file
-   */
   getPendingChanges(filePath: string): PendingChange[] {
     const fileChanges = this.files.get(filePath);
     return fileChanges ? Array.from(fileChanges.changes.values()) : [];
   }
 
-  /**
-   * Find a change by ID
-   */
   findChange(changeId: string): PendingChange | undefined {
     for (const fileChanges of this.files.values()) {
       if (fileChanges.changes.has(changeId)) {
@@ -84,9 +66,6 @@ export class ChangeTracker {
     return undefined;
   }
 
-  /**
-   * Clear all changes for a file
-   */
   clearChangesForFile(filePath: string): void {
     this.files.delete(filePath);
   }

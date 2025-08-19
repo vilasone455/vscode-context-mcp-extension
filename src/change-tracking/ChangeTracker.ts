@@ -30,13 +30,12 @@ export class ChangeTracker {
         originalText,
         description: `${description} (${index + 1}/${textEdits.length})`,
         timestamp: new Date(),
-        changeType: this.determineChangeType(originalText, textEdit.newText)
       };
 
       fileChanges.changes.set(change.id, change);
       newChanges.push(change);
       
-      console.log(`➕ Added change ${change.id}: ${change.changeType} - "${originalText}" -> "${textEdit.newText}"`);
+      console.log(`➕ Added change ${change.id}: "${originalText}" -> "${textEdit.newText}"`);
     });
 
     return newChanges;
@@ -61,57 +60,7 @@ export class ChangeTracker {
    * Reject a change - revert to original content
    */
   async rejectChange(changeId: string): Promise<boolean> {
-    const change = this.findChange(changeId);
-    if (!change) {
-      return false;
-    }
-
-    try {
-      const uri = vscode.Uri.file(change.filePath);
-      const document = await vscode.workspace.openTextDocument(uri);
-      const revertEdit = new vscode.WorkspaceEdit();
-      
-      // For insertions, calculate the range to delete
-      if (change.changeType === 'addition' && change.textEdit.range.start.isEqual(change.textEdit.range.end)) {
-        const insertedLines = change.textEdit.newText.split('\n');
-        const lastLineLength = insertedLines[insertedLines.length - 1].length;
-        
-        let deleteRange: vscode.Range;
-        if (insertedLines.length === 1) {
-          deleteRange = new vscode.Range(
-            change.textEdit.range.start,
-            new vscode.Position(
-              change.textEdit.range.start.line, 
-              change.textEdit.range.start.character + lastLineLength
-            )
-          );
-        } else {
-          deleteRange = new vscode.Range(
-            change.textEdit.range.start,
-            new vscode.Position(
-              change.textEdit.range.start.line + insertedLines.length - 1,
-              lastLineLength
-            )
-          );
-        }
-        revertEdit.delete(uri, deleteRange);
-      } else {
-        revertEdit.replace(uri, change.textEdit.range, change.originalText);
-      }
-      
-      const success = await vscode.workspace.applyEdit(revertEdit);
-      
-      if (success) {
-        await document.save();
-        this.removeChange(changeId);
-        console.log(`❌ Rejected: ${change.description}`);
-        this.onDidChangeEmitter.fire(changeId);
-        return true;
-      }
-    } catch (error) {
-      console.error(`Failed to reject change ${changeId}:`, error);
-    }
-
+    console.log(`❌ Rejecting change ${changeId}`);
     return false;
   }
 
@@ -215,16 +164,6 @@ export class ChangeTracker {
         selectedLines[selectedLines.length - 1] = selectedLines[selectedLines.length - 1]?.substring(0, endChar) || '';
       }
       return selectedLines.join('\n');
-    }
-  }
-
-  private determineChangeType(originalText: string, newText: string): 'addition' | 'deletion' | 'modification' {
-    if (originalText === '' && newText !== '') {
-      return 'addition';
-    } else if (originalText !== '' && newText === '') {
-      return 'deletion';
-    } else {
-      return 'modification';
     }
   }
 

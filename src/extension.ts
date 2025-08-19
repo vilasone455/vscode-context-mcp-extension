@@ -316,7 +316,7 @@ function calculateStats(animals) {
       }
 
       const changeItems = changes.map(change => ({
-        label: `${change.changeType}: ${change.description}`,
+        label: `${change.description}`,
         detail: `ID: ${change.id} | Original: "${change.originalText}" | New: "${change.textEdit.newText}"`,
         changeId: change.id
       }));

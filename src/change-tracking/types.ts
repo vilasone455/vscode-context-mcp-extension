@@ -10,7 +10,6 @@ export interface PendingChange {
   originalText: string;
   description: string;
   timestamp: Date;
-  changeType: 'addition' | 'deletion' | 'modification';
 }
 
 /**

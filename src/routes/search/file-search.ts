@@ -205,7 +205,6 @@ export async function handleSearchFileContent(req: Request, res: Response): Prom
       return;
     }
 
-    const startTime = Date.now();
     const content = await fs.promises.readFile(resolvedPath, 'utf8');
     const lines = content.split('\n');
     
@@ -288,34 +287,8 @@ export async function handleSearchFileContent(req: Request, res: Response): Prom
       }
     }
     
-    const endTime = Date.now();
-    const duration = endTime - startTime;
-    const fileSizeKB = (stats.size / 1024).toFixed(1);
-    
-    // Format response similar to the example
-    let response = `Found ${matches.length} matches in ${duration}ms:\n`;
-    response += `File size: ${fileSizeKB}KB\n`;
-    
-    matches.forEach((match, index) => {
-      response += `\nMatch ${index + 1}: Line ${match.lineNumber}, Column ${match.columnNumber}\n`;
-      response += '----------------------------------------\n';
-      
-      match.context.forEach(contextLine => {
-        const prefix = contextLine.isMatch ? '>' : ' ';
-        const lineNumStr = contextLine.lineNumber.toString().padStart(4);
-        response += `${prefix}   ${lineNumStr} | ${contextLine.content}\n`;
-      });
-    });
-    
-    if (matches.length === 0) {
-      response += '\nNo matches found.';
-    }
-    
     res.json({ 
       matches: matches.length,
-      duration: `${duration}ms`,
-      fileSize: `${fileSizeKB}KB`,
-      results: response,
       data: matches
     });
     

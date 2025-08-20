@@ -110,11 +110,7 @@ function registerCommands(context: vscode.ExtensionContext): void {
           id: 'animal-complex',
           fileCheck: 'animal.js'
         },
-        {
-          label: '📝 Multi-line: Add function with body',
-          detail: 'Medium test - adds a complete function with multiple lines',
-          id: 'multiline'
-        }
+    
       ];
 
       // Filter test cases based on current file
@@ -150,9 +146,6 @@ function registerCommands(context: vscode.ExtensionContext): void {
           case 'animal-complex':
             changes = await createAnimalComplexTestCase(document, changeTracker);
             break;
-          case 'multiline':
-            changes = await createMultilineTestCase(document, changeTracker);
-            break;
         }
 
         if (changes.length > 0) {
@@ -178,16 +171,27 @@ function registerCommands(context: vscode.ExtensionContext): void {
 
   // Helper functions for different test cases
   async function createSimpleTestCase(document: vscode.TextDocument, tracker: ChangeTracker) {
-    const range = new vscode.Range(
-      new vscode.Position(0, 0),
-      new vscode.Position(0, document.lineAt(0).text.length)
-    );
+    // using ApplyEditsRequest 
+    const inputs: ApplyEditsRequest = {
+      "filePath": document.uri.fsPath,
+      "shortComment": "Simple: Replace first line",
+      "edits": [
+        {
+          "action_type": "insert-before",
+          "match_type": "line",
+          "atLine": 1,
+          "newText": "console.log('Hello World with Diff!');"
+        }
+      ]
+    };
 
-    const textEdit = new vscode.TextEdit(range, 'console.log("Hello World with Diff!");');
+    const vscodeEdits = await createVscodeTextEdits(document, inputs.edits);
+
+
 
     return await tracker.addChanges(
       document.uri.fsPath,
-      [textEdit],
+      vscodeEdits,
       'Simple: Replace first line'
     );
   }
@@ -239,35 +243,6 @@ function registerCommands(context: vscode.ExtensionContext): void {
     }
   }
 
-  async function createMultilineTestCase(document: vscode.TextDocument, tracker: ChangeTracker) {
-    // Add a complete function at the end of the file
-    const lastLine = document.lineCount - 1;
-    const insertPosition = new vscode.Position(lastLine, document.lineAt(lastLine).text.length);
-    const insertRange = new vscode.Range(insertPosition, insertPosition);
-
-    const newFunction = `
-
-// New utility function added by test
-function calculateStats(animals) {
-    const totalAge = animals.reduce((sum, animal) => sum + animal.age, 0);
-    const averageAge = totalAge / animals.length;
-    
-    return {
-        count: animals.length,
-        totalAge,
-        averageAge: Math.round(averageAge * 100) / 100,
-        species: [...new Set(animals.map(a => a.species))]
-    };
-}`;
-
-    const textEdit = new vscode.TextEdit(insertRange, newFunction);
-
-    return await tracker.addChanges(
-      document.uri.fsPath,
-      [textEdit],
-      'Multi-line: Add utility function'
-    );
-  }
 
   // Command to show all pending changes
   const showChangesCmd = vscode.commands.registerCommand(
@@ -350,6 +325,7 @@ function initializeWebviewProvider(context: vscode.ExtensionContext): void {
 export function activate(context: vscode.ExtensionContext): void {
   console.log('--- EXTENSION ACTIVATING ---'); // <-- ADD THIS
   console.log('VS Code Context MCP Extension is now active');
+
 
   // Set extension context in global state
 

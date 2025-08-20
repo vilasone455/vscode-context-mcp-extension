@@ -5,3 +5,4 @@ webview/dist/
 *.vsix
 *.cmd
 tests/
+config.ts

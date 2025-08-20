@@ -19,6 +19,7 @@ import { getSession, getWebviewProvider } from './server/state';
 import { ChangeTracker, ChangeDecorator } from './change-tracking';
 import { createVscodeTextEdits } from './utils/edit-helpers';
 import { ApplyEditsRequest } from './models/ApplyEditsRequest';
+import { cleanTestFile } from '../test-workspace/clean-testfile';
 
 // =============================================================================
 // EXTENSION LIFECYCLE FUNCTIONS
@@ -340,6 +341,8 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // Register all commands
   registerCommands(context);
+
+  cleanTestFile();
 
 
 

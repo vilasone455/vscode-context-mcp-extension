@@ -10,6 +10,7 @@ import * as vscode from 'vscode';
 import { getCurrentProjectPath } from '../../server/state';
 import { ApplyEditsRequest } from '../../models/ApplyEditsRequest';
 import { createVscodeTextEdits } from '../../utils/edit-helpers';
+import { ChangeTracker } from '../../change-tracking';
 
 
 /**
@@ -384,6 +385,10 @@ export async function handleModifyFile(req: Request, res: Response): Promise<voi
       });
       return;
     }
+
+    // add pending change to change tracker
+    let changeTracker = new ChangeTracker();
+    const pendingChanges = await changeTracker.addChanges(resolvedPath, vscodeEdits, shortComment || 'No comment');
     
     // Apply the edits
     const workspaceEdit = new vscode.WorkspaceEdit();

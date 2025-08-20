@@ -57,7 +57,7 @@ function registerCommands(context: vscode.ExtensionContext): void {
 
 
 
-  context.subscriptions.push( {
+  context.subscriptions.push({
     dispose: () => {
       changeDecorator.dispose();
     }
@@ -156,6 +156,14 @@ function registerCommands(context: vscode.ExtensionContext): void {
         }
 
         if (changes.length > 0) {
+          const workspaceEdit = new vscode.WorkspaceEdit();
+          let changeList = changes.map(change => change.textEdit);
+          workspaceEdit.set(document.uri, changeList);
+          const success = await vscode.workspace.applyEdit(workspaceEdit);
+          if (success) {
+            await document.save();
+          }
+
           await changeDecorator.showDecorations(activeEditor, changes);
 
           vscode.window.showInformationMessage(
@@ -216,43 +224,6 @@ function registerCommands(context: vscode.ExtensionContext): void {
       }
 
       const vscodeEdits = await createVscodeTextEdits(document, inputs.edits);
-
-      console.log(JSON.stringify(vscodeEdits))
-
-      console.log("Edit list...");
-
-      vscodeEdits.forEach((edit, index) => {
-        console.log(`\n--- Edit ${index + 1} ---`);
-        console.log(`Range: Line ${edit.range.start.line + 1}, Col ${edit.range.start.character} to Line ${edit.range.end.line + 1}, Col ${edit.range.end.character}`);
-        console.log(`New Text: ${JSON.stringify(edit.newText)}`);
-
-        // Show the operation type based on the edit
-        if (edit.newText === '') {
-          console.log(`Operation: DELETE`);
-        } else if (edit.range.start.line === edit.range.end.line && edit.range.start.character === edit.range.end.character) {
-          console.log(`Operation: INSERT`);
-        } else {
-          console.log(`Operation: REPLACE`);
-        }
-
-        // Show affected text length
-        const startPos = edit.range.start;
-        const endPos = edit.range.end;
-        const affectedLines = endPos.line - startPos.line + 1;
-        console.log(`Affected lines: ${affectedLines}`);
-      });
-
-      console.log(`\nTotal edits: ${vscodeEdits.length}`);
-      const workspaceEdit = new vscode.WorkspaceEdit();
-      workspaceEdit.set(document.uri, vscodeEdits);
-      const success = await vscode.workspace.applyEdit(workspaceEdit);
-
-      if (success) {
-        await document.save();
-
-      }
-
-      // return []
 
       return await tracker.addChanges(
         document.uri.fsPath,
@@ -390,7 +361,6 @@ export function activate(context: vscode.ExtensionContext): void {
   initializeWebviewProvider(context);
 
   // Initialize change tracking
-  const changeTracker = new ChangeTracker();
 
   // Register all commands
   registerCommands(context);
